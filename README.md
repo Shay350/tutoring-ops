@@ -23,6 +23,8 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Supabase
 
 - Apply SQL migrations from `supabase/migrations` in the Supabase SQL editor after pulling updates.
+- Required env vars in `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Google OAuth redirect URL template: `https://<project-ref>.supabase.co/auth/v1/callback`.
 
 ## Learn More
 

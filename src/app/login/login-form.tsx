@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function LoginForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOAuthSubmitting, setIsOAuthSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -35,6 +36,25 @@ export default function LoginForm() {
     }
 
     router.refresh();
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsOAuthSubmitting(true);
+
+    const supabase = createClient();
+    const origin = window.location.origin;
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
+    });
+
+    if (oauthError) {
+      setError(oauthError.message);
+      setIsOAuthSubmitting(false);
+    }
   };
 
   return (
@@ -63,6 +83,15 @@ export default function LoginForm() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <Button className="w-full" disabled={isSubmitting} type="submit">
         {isSubmitting ? "Signing in..." : "Sign in"}
+      </Button>
+      <Button
+        className="w-full"
+        disabled={isOAuthSubmitting}
+        type="button"
+        variant="outline"
+        onClick={handleGoogleSignIn}
+      >
+        {isOAuthSubmitting ? "Connecting..." : "Continue with Google"}
       </Button>
       <p className="text-xs text-muted-foreground">
         Contact a manager if you need access or a password reset.
