@@ -1,7 +1,42 @@
+# ─────────────────────────────────────────────
+# Approval / sandbox policy
+# ─────────────────────────────────────────────
+
+[approvals]
+mode = "off" # true hands-off; use "auto" if you want a last-resort safety net
+
+[execpolicy]
+auto_approve = true
+allow_network = true
+allow_git_writes = true
+
+[execpolicy.allow]
+commands = [
+  "git",
+  "npm",
+  "npx",
+  "pnpm",
+  "node",
+  "playwright"
+]
+
+# ─────────────────────────────────────────────
+# MCP servers (npm-installed, no npx)
+# ─────────────────────────────────────────────
+
 [mcp_servers]
 
-# Browser automation tool (agent can drive UI flows)
-playwright = { command = "npx", args = ["-y", "@microsoft/playwright-mcp"] }
+# Playwright MCP (local dependency)
+playwright = { 
+  command = "node",
+  args = ["./node_modules/@playwright/mcp/dist/index.js"]
+}
 
-# Filesystem tool (scoped to repo root)
-filesystem = { command = "npx", args = ["-y", "@modelcontextprotocol/server-filesystem", "."] }
+# Filesystem MCP (repo-scoped)
+filesystem = {
+  command = "node",
+  args = [
+    "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+    "."
+  ]
+}
