@@ -1,15 +1,24 @@
-import AppShell from "@/components/app-shell";
-import { requireRole } from "@/lib/auth";
+import AppShell, { type NavItem } from "@/components/app-shell";
 
-export default async function ManagerLayout({
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/manager" },
+  { label: "Pipeline", href: "/manager/pipeline" },
+  { label: "Master Schedule", href: "/manager/schedule" },
+  { label: "Reports", href: "/manager/reports" },
+];
+
+export default function ManagerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { profile } = await requireRole("manager");
-
   return (
-    <AppShell role="manager" userName={profile.full_name}>
+    <AppShell
+      title="TutorOps"
+      badge="Manager"
+      homeHref="/manager"
+      navItems={navItems}
+    >
       {children}
     </AppShell>
   );
