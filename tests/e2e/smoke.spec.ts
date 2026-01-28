@@ -11,3 +11,16 @@ test("login page renders", async ({ page }) => {
   await page.goto("http://localhost:3000/login");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
+
+test("manager route redirects to login when logged out", async ({ page }) => {
+  await page.goto("http://localhost:3000/manager");
+  await page.waitForURL("**/login");
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});
+
+test("no-access page renders", async ({ page }) => {
+  await page.goto("http://localhost:3000/no-access");
+  await expect(
+    page.getByRole("heading", { name: "Not authorized" })
+  ).toBeVisible();
+});
