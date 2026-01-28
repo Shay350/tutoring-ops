@@ -1,0 +1,7 @@
+[mcp_servers]
+
+# Browser automation tool (agent can drive UI flows)
+playwright = { command = "npx", args = ["-y", "@microsoft/playwright-mcp"] }
+
+# Filesystem tool (scoped to repo root)
+filesystem = { command = "npx", args = ["-y", "@modelcontextprotocol/server-filesystem", "."] }
