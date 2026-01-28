@@ -1,9 +1,5 @@
-# ─────────────────────────────────────────────
-# Approval / sandbox policy
-# ─────────────────────────────────────────────
-
 [approvals]
-mode = "off" # true hands-off; use "auto" if you want a last-resort safety net
+mode = "off"
 
 [execpolicy]
 auto_approve = true
@@ -20,23 +16,6 @@ commands = [
   "playwright"
 ]
 
-# ─────────────────────────────────────────────
-# MCP servers (npm-installed, no npx)
-# ─────────────────────────────────────────────
-
 [mcp_servers]
-
-# Playwright MCP (local dependency)
-playwright = { 
-  command = "node",
-  args = ["./node_modules/@playwright/mcp/dist/index.js"]
-}
-
-# Filesystem MCP (repo-scoped)
-filesystem = {
-  command = "node",
-  args = [
-    "./node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-    "."
-  ]
-}
+playwright = { command = "npx", args = ["-y", "@playwright/mcp@latest"] }
+filesystem = { command = "npx", args = ["-y", "@modelcontextprotocol/server-filesystem", "."] }
