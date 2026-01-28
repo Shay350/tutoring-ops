@@ -37,17 +37,14 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/customer"
-              className={cn(buttonVariants({ variant: "default" }), "bg-white")}
-            >
-              Customer view
+            <Link href="/login" className={buttonVariants({ variant: "default" })}>
+              Sign in
             </Link>
             <Link
-              href="/manager"
+              href="/customer"
               className={cn(buttonVariants({ variant: "outline" }), "bg-white")}
             >
-              Manager view
+              Customer view
             </Link>
           </div>
         </div>
