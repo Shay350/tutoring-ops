@@ -1,15 +1,27 @@
-import AppShell from "@/components/app-shell";
+import AppShell, { type NavItem } from "@/components/app-shell";
 import { requireRole } from "@/lib/auth";
+
+const navItems: NavItem[] = [
+  { label: "Today", href: "/tutor" },
+  { label: "Schedule", href: "/tutor/schedule" },
+  { label: "Students", href: "/tutor/students" },
+  { label: "Messages", href: "/tutor/messages" },
+];
 
 export default async function TutorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { profile } = await requireRole("tutor");
+  await requireRole("tutor");
 
   return (
-    <AppShell role="tutor" userName={profile.full_name}>
+    <AppShell
+      title="TutorOps"
+      badge="Tutor"
+      homeHref="/tutor"
+      navItems={navItems}
+    >
       {children}
     </AppShell>
   );

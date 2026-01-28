@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { roleToPath } from "../../src/lib/roles";
+import { resolveRolePath, roleToPath } from "../../src/lib/roles";
 
 describe("roleToPath", () => {
   it("maps customer to /customer", () => {
@@ -12,5 +12,19 @@ describe("roleToPath", () => {
 
   it("maps manager to /manager", () => {
     expect(roleToPath("manager")).toBe("/manager");
+  });
+});
+
+describe("resolveRolePath", () => {
+  it("returns /login for unknown role", () => {
+    expect(resolveRolePath("unknown")).toBe("/login");
+  });
+
+  it("returns /login for missing role", () => {
+    expect(resolveRolePath(undefined)).toBe("/login");
+  });
+
+  it("supports a custom fallback", () => {
+    expect(resolveRolePath("unknown", "/")).toBe("/");
   });
 });

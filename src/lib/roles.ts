@@ -1,23 +1,22 @@
-export const ROLES = ["customer", "tutor", "manager"] as const;
+export const ROLE_PATHS = {
+  customer: "/customer",
+  tutor: "/tutor",
+  manager: "/manager",
+} as const;
 
-export type Role = (typeof ROLES)[number];
+export type Role = keyof typeof ROLE_PATHS;
 
 export function isRole(value: string | null | undefined): value is Role {
-  if (!value) return false;
-  return ROLES.includes(value as Role);
+  return typeof value === "string" && value in ROLE_PATHS;
 }
 
-export function roleToPath(role: Role): `/${Role}` {
-  return `/${role}`;
+export function roleToPath(role: Role): (typeof ROLE_PATHS)[Role] {
+  return ROLE_PATHS[role];
 }
 
-export function roleLabel(role: Role): string {
-  switch (role) {
-    case "customer":
-      return "Customer";
-    case "tutor":
-      return "Tutor";
-    case "manager":
-      return "Manager";
-  }
+export function resolveRolePath(
+  role: string | null | undefined,
+  fallback = "/login"
+): string {
+  return isRole(role) ? ROLE_PATHS[role] : fallback;
 }

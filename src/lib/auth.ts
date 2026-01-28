@@ -1,53 +1,61 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { isRole, roleToPath, type Role } from "@/lib/roles";
+import "server-only";
 
-export type Profile = {
-  id: string;
-  role: Role;
-  full_name: string | null;
+import { redirect } from "next/navigation";
+
+import { resolveRolePath, type Role } from "@/lib/roles";
+import { createClient } from "@/lib/supabase/server";
+
+type RoleLookupResult = {
+  role: string | null;
 };
 
-export async function getCurrentProfile() {
+async function fetchProfileRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle<RoleLookupResult>();
+
+  if (error) {
+    return null;
+  }
+
+  return typeof data?.role === "string" ? data.role : null;
+}
+
+function extractMetadataRole(user: { user_metadata?: unknown; app_metadata?: unknown }) {
+  const metadata = user.user_metadata as Record<string, unknown> | undefined;
+  const appMetadata = user.app_metadata as Record<string, unknown> | undefined;
+
+  if (typeof metadata?.role === "string") {
+    return metadata.role;
+  }
+
+  if (typeof appMetadata?.role === "string") {
+    return appMetadata.role;
+  }
+
+  return null;
+}
+
+export async function requireRole(requiredRole: Role): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { user: null, profile: null };
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, role, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (error || !data || !isRole(data.role)) {
-    return { user, profile: null };
-  }
-
-  return {
-    user,
-    profile: {
-      id: data.id,
-      role: data.role,
-      full_name: data.full_name,
-    },
-  };
-}
-
-export async function requireRole(expectedRole: Role) {
-  const { user, profile } = await getCurrentProfile();
-
-  if (!user || !profile) {
+  if (!user || error) {
     redirect("/login");
   }
 
-  if (profile.role !== expectedRole) {
-    redirect(roleToPath(profile.role));
-  }
+  const profileRole = await fetchProfileRole(supabase, user.id);
+  const role = profileRole ?? extractMetadataRole(user);
 
-  return { user, profile };
+  if (role !== requiredRole) {
+    redirect(resolveRolePath(role ?? undefined));
+  }
 }

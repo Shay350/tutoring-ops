@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { isRole, roleToPath } from "@/lib/roles";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -24,7 +23,7 @@ export default function LoginForm() {
     const password = String(formData.get("password") ?? "");
 
     const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -35,25 +34,6 @@ export default function LoginForm() {
       return;
     }
 
-    if (!data.user) {
-      setError("Unable to load your account. Please try again.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError || !profile || !isRole(profile.role)) {
-      setError("We could not determine your role. Contact an administrator.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    router.push(roleToPath(profile.role));
     router.refresh();
   };
 

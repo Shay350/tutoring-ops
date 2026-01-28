@@ -1,15 +1,27 @@
-import AppShell from "@/components/app-shell";
+import AppShell, { type NavItem } from "@/components/app-shell";
 import { requireRole } from "@/lib/auth";
+
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/customer" },
+  { label: "Students", href: "/customer/students" },
+  { label: "Calendar", href: "/customer/calendar" },
+  { label: "Messages", href: "/customer/messages" },
+];
 
 export default async function CustomerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { profile } = await requireRole("customer");
+  await requireRole("customer");
 
   return (
-    <AppShell role="customer" userName={profile.full_name}>
+    <AppShell
+      title="TutorOps"
+      badge="Customer"
+      homeHref="/customer"
+      navItems={navItems}
+    >
       {children}
     </AppShell>
   );
