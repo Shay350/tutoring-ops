@@ -1,4 +1,5 @@
 import AppShell, { type NavItem } from "@/components/app-shell";
+import { requireRole } from "@/lib/auth";
 
 const navItems: NavItem[] = [
   { label: "Today", href: "/tutor" },
@@ -7,11 +8,13 @@ const navItems: NavItem[] = [
   { label: "Messages", href: "/tutor/messages" },
 ];
 
-export default function TutorLayout({
+export default async function TutorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requireRole("tutor");
+
   return (
     <AppShell
       title="TutorOps"
