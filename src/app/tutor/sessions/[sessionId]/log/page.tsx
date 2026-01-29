@@ -22,7 +22,7 @@ export default async function SessionLogPage({ params }: PageProps) {
   const { data: session } = await supabase
     .from("sessions")
     .select(
-      "id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
+      "id, student_id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -34,6 +34,14 @@ export default async function SessionLogPage({ params }: PageProps) {
   const log = Array.isArray(session.session_logs)
     ? session.session_logs[0]
     : session.session_logs ?? null;
+
+  const { data: progressSnapshot } = await supabase
+    .from("progress_snapshots")
+    .select("attendance_rate, homework_completion, notes, updated_at")
+    .eq("student_id", session.student_id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   return (
     <div className="space-y-6">
@@ -79,6 +87,9 @@ export default async function SessionLogPage({ params }: PageProps) {
           next_plan: log?.next_plan ?? "",
           customer_summary: log?.customer_summary ?? "",
           private_notes: log?.private_notes ?? "",
+          attendance_rate: progressSnapshot?.attendance_rate ?? null,
+          homework_completion: progressSnapshot?.homework_completion ?? null,
+          progress_notes: progressSnapshot?.notes ?? "",
         }}
         action={saveSessionLog}
       />

@@ -203,43 +203,45 @@ VERTICAL SLICE 3 — Progress Tracking + At-Risk Flags
 GOAL:
 Make progress measurable and give managers visibility into risk.
 
+STATUS: COMPLETE (2026-01-29)
+
 ------------------------------------------------------------
 VS3 — DB Tasks
 ------------------------------------------------------------
-- Extend progress_snapshots:
-  - attendance_rate
-  - homework_completion
-  - last_session_delta
-  - updated_at
-- Add at_risk flag + reason on students
+- [x] Extend progress_snapshots:
+  - [x] attendance_rate
+  - [x] homework_completion
+  - [x] last_session_delta
+  - [x] updated_at
+- [x] Add at_risk flag + reason on students
 
 RLS:
-- Tutors can update progress for assigned students
-- Customers can read progress only
-- Managers can read/update all
+- [x] Tutors can update progress for assigned students
+- [x] Customers can read progress only
+- [x] Managers can read/update all
 
 ------------------------------------------------------------
 VS3 — Backend Tasks
 ------------------------------------------------------------
-- Update progress snapshot on session log submit
-- Manager can mark/unmark at-risk with reason
+- [x] Update progress snapshot on session log submit
+- [x] Manager can mark/unmark at-risk with reason
 
 ------------------------------------------------------------
 VS3 — UI Tasks
 ------------------------------------------------------------
-- Tutor:
-  - Progress inputs on session log
-- Customer:
-  - Progress summary view
-- Manager:
-  - At-risk indicator + filter
+- [x] Tutor:
+  - [x] Progress inputs on session log
+- [x] Customer:
+  - [x] Progress summary view
+- [x] Manager:
+  - [x] At-risk indicator + filter
 
 ------------------------------------------------------------
 VS3 — Testing
 ------------------------------------------------------------
-- Progress updates propagate correctly
-- At-risk visibility per role
-- Regression tests on VS1/VS2 flows
+- [x] Progress updates propagate correctly
+- [x] At-risk visibility per role
+- [x] Regression tests on VS1/VS2 flows
 
 ------------------------------------------------------------
 VS3 — Exit Criteria

@@ -14,6 +14,9 @@ type SessionLogDefaults = {
   next_plan: string | null;
   customer_summary: string | null;
   private_notes: string | null;
+  attendance_rate?: number | null;
+  homework_completion?: number | null;
+  progress_notes?: string | null;
 };
 
 function FormMessage({
@@ -93,6 +96,47 @@ export default function SessionLogForm({
               placeholder="Review homework, introduce decimals"
               defaultValue={defaults.next_plan ?? ""}
               data-testid="session-log-next-plan"
+            />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="attendance_rate">Attendance rate (%)</Label>
+              <input
+                id="attendance_rate"
+                name="attendance_rate"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                defaultValue={defaults.attendance_rate ?? ""}
+                data-testid="session-log-attendance"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="homework_completion">Homework completion (%)</Label>
+              <input
+                id="homework_completion"
+                name="homework_completion"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                defaultValue={defaults.homework_completion ?? ""}
+                data-testid="session-log-homework-completion"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="progress_notes">Progress notes</Label>
+            <textarea
+              id="progress_notes"
+              name="progress_notes"
+              className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Notes about momentum, challenges, or wins"
+              defaultValue={defaults.progress_notes ?? ""}
+              data-testid="session-log-progress-notes"
             />
           </div>
           <div className="space-y-2">

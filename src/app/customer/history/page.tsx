@@ -24,8 +24,10 @@ export default async function CustomerHistoryPage() {
       .order("session_date", { ascending: false }),
     supabase
       .from("progress_snapshots")
-      .select("id, student_id, sessions_completed, last_session_at, notes, created_at")
-      .order("created_at", { ascending: false }),
+      .select(
+        "id, student_id, sessions_completed, last_session_at, attendance_rate, homework_completion, last_session_delta, notes, created_at, updated_at"
+      )
+      .order("updated_at", { ascending: false }),
   ]);
 
   const students = studentsResult.data ?? [];
@@ -53,7 +55,7 @@ export default async function CustomerHistoryPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Progress snapshots</CardTitle>
+          <CardTitle>Progress summary</CardTitle>
         </CardHeader>
         <CardContent>
           <Table data-testid="progress-snapshot">
@@ -62,6 +64,10 @@ export default async function CustomerHistoryPage() {
                 <TableHead>Student</TableHead>
                 <TableHead>Sessions completed</TableHead>
                 <TableHead>Last session</TableHead>
+                <TableHead>Attendance</TableHead>
+                <TableHead>Homework</TableHead>
+                <TableHead>Last gap</TableHead>
+                <TableHead>Updated</TableHead>
                 <TableHead>Notes</TableHead>
               </TableRow>
             </TableHeader>
@@ -82,6 +88,26 @@ export default async function CustomerHistoryPage() {
                         {formatDate(snapshot?.last_session_at ?? null)}
                       </TableCell>
                       <TableCell>
+                        {snapshot?.attendance_rate ?? snapshot?.attendance_rate === 0
+                          ? `${snapshot.attendance_rate}%`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {snapshot?.homework_completion ??
+                        snapshot?.homework_completion === 0
+                          ? `${snapshot.homework_completion}%`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {snapshot?.last_session_delta ??
+                        snapshot?.last_session_delta === 0
+                          ? `${snapshot.last_session_delta} days`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {formatDateTime(snapshot?.updated_at ?? null)}
+                      </TableCell>
+                      <TableCell>
                         {snapshot?.notes ? (
                           <span className="text-sm text-muted-foreground">
                             {snapshot.notes}
@@ -95,7 +121,7 @@ export default async function CustomerHistoryPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-sm">
+                  <TableCell colSpan={8} className="text-center text-sm">
                     No students yet.
                   </TableCell>
                 </TableRow>
