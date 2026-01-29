@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
+import { saveSessionLog } from "./actions";
 import SessionLogForm from "./session-log-form";
 
 type PageProps = {
@@ -42,9 +44,12 @@ export default async function SessionLogPage({ params }: PageProps) {
             Session log
           </h1>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/tutor">Back to dashboard</Link>
-        </Button>
+        <Link
+          href="/tutor"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          Back to dashboard
+        </Link>
       </div>
 
       <Card>
@@ -54,7 +59,7 @@ export default async function SessionLogPage({ params }: PageProps) {
         <CardContent className="grid gap-2 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">
-              {session.students?.full_name ?? "Student"}
+              {session.students?.[0]?.full_name ?? "Student"}
             </span>
             <Badge variant="secondary" className="capitalize">
               {session.status ?? "scheduled"}
@@ -75,6 +80,7 @@ export default async function SessionLogPage({ params }: PageProps) {
           customer_summary: log?.customer_summary ?? "",
           private_notes: log?.private_notes ?? "",
         }}
+        action={saveSessionLog}
       />
     </div>
   );

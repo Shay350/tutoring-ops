@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type PageProps = {
   searchParams?: { q?: string };
@@ -89,14 +90,15 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
                     </TableCell>
                     <TableCell>{formatDateTime(intake.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
+                      <Link
+                        href={`/manager/pipeline/${intake.id}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" })
+                        )}
                         data-testid={`pipeline-review-${intake.id}`}
                       >
-                        <Link href={`/manager/pipeline/${intake.id}`}>Review</Link>
-                      </Button>
+                        Review
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

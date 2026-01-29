@@ -10,6 +10,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
+import { submitIntake } from "./actions";
 import IntakeForm from "./intake-form";
 
 export default async function CustomerIntakePage() {
@@ -26,7 +27,7 @@ export default async function CustomerIntakePage() {
         <h1 className="text-2xl font-semibold text-slate-900">Intake</h1>
       </div>
 
-      <IntakeForm />
+      <IntakeForm action={submitIntake} />
 
       <Card>
         <CardHeader>

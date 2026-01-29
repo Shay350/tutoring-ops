@@ -5,9 +5,8 @@ import { useFormState } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
-
-import { saveSessionLog } from "./actions";
 
 type SessionLogDefaults = {
   topics: string | null;
@@ -46,11 +45,13 @@ function FormMessage({
 export default function SessionLogForm({
   sessionId,
   defaults,
+  action,
 }: {
   sessionId: string;
   defaults: SessionLogDefaults;
+  action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
 }) {
-  const [state, formAction] = useFormState(saveSessionLog, initialActionState);
+  const [state, formAction] = useFormState(action, initialActionState);
 
   return (
     <Card>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function TutorStudentsPage() {
   const supabase = await createClient();
@@ -32,15 +33,25 @@ export default async function TutorStudentsPage() {
         .order("session_date", { ascending: false })
     : { data: [] };
 
-  const sessionsByStudent = (sessions ?? []).reduce<
-    Record<string, typeof sessions>
-  >((acc, session) => {
-    if (!acc[session.student_id]) {
-      acc[session.student_id] = [];
+  type SessionRow = NonNullable<typeof sessions>[number];
+
+  const sessionsByStudent = (sessions ?? []).reduce<Record<string, SessionRow[]>>(
+    (acc, session) => {
+    if (!session) {
+      return acc;
     }
-    acc[session.student_id].push(session);
-    return acc;
-  }, {});
+    const studentId = session.student_id;
+    if (!studentId) {
+      return acc;
+    }
+      if (!acc[studentId]) {
+        acc[studentId] = [];
+      }
+      acc[studentId].push(session as SessionRow);
+      return acc;
+    },
+    {}
+  );
 
   return (
     <div className="space-y-6">
@@ -72,6 +83,9 @@ export default async function TutorStudentsPage() {
                   const studentSessions =
                     sessionsByStudent[assignment.student_id] ?? [];
                   const latestSession = studentSessions[0];
+                  const student = Array.isArray(assignment.students)
+                    ? assignment.students[0]
+                    : assignment.students;
                   const hasLog = latestSession
                     ? Array.isArray(latestSession.session_logs)
                       ? latestSession.session_logs.length > 0
@@ -81,11 +95,11 @@ export default async function TutorStudentsPage() {
                   return (
                     <TableRow key={assignment.id}>
                       <TableCell className="font-medium">
-                        {assignment.students?.full_name ?? "Student"}
+                        {student?.full_name ?? "Student"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
-                          {assignment.students?.status ?? "active"}
+                          {student?.status ?? "active"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -96,16 +110,15 @@ export default async function TutorStudentsPage() {
                       <TableCell>{studentSessions.length}</TableCell>
                       <TableCell>
                         {latestSession ? (
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="outline"
+                          <Link
+                            href={`/tutor/sessions/${latestSession.id}/log`}
+                            className={cn(
+                              buttonVariants({ variant: "outline", size: "sm" })
+                            )}
                             data-testid={`student-log-${latestSession.id}`}
                           >
-                            <Link href={`/tutor/sessions/${latestSession.id}/log`}>
-                              {hasLog ? "Edit log" : "Log session"}
-                            </Link>
-                          </Button>
+                            {hasLog ? "Edit log" : "Log session"}
+                          </Link>
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             No sessions yet

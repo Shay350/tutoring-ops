@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
+import { approveIntake, assignTutor, createSession } from "../actions";
 import {
   ApproveIntakeForm,
   AssignTutorForm,
@@ -95,9 +97,12 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             Intake review
           </h1>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/manager/pipeline">Back to pipeline</Link>
-        </Button>
+        <Link
+          href="/manager/pipeline"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
+          Back to pipeline
+        </Link>
       </div>
 
       <Card>
@@ -147,7 +152,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       </Card>
 
       {!student ? (
-        <ApproveIntakeForm intakeId={intake.id} />
+        <ApproveIntakeForm intakeId={intake.id} action={approveIntake} />
       ) : (
         <Card>
           <CardHeader>
@@ -186,6 +191,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             intakeId={intake.id}
             studentId={student.id}
             tutorId={assignment.tutor_id ?? ""}
+            action={createSession}
           />
         </>
       ) : student ? (
@@ -194,6 +200,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             intakeId={intake.id}
             studentId={student.id}
             tutors={tutors}
+            action={assignTutor}
           />
         ) : (
           <Card>

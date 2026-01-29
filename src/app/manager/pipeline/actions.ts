@@ -1,3 +1,5 @@
+"use server";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -11,8 +13,6 @@ export async function approveIntake(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  "use server";
-
   const context = await getActionContext("manager");
   if ("error" in context) {
     return toActionError(context.error);
@@ -88,8 +88,6 @@ export async function assignTutor(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  "use server";
-
   const context = await getActionContext("manager");
   if ("error" in context) {
     return toActionError(context.error);
@@ -153,8 +151,6 @@ export async function createSession(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  "use server";
-
   const context = await getActionContext("manager");
   if ("error" in context) {
     return toActionError(context.error);

@@ -1,3 +1,5 @@
+"use server";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -11,8 +13,6 @@ export async function submitIntake(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  "use server";
-
   const context = await getActionContext("customer");
   if ("error" in context) {
     return toActionError(context.error);

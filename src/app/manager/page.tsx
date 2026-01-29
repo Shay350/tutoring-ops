@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function ManagerDashboard() {
   const supabase = await createClient();
@@ -78,9 +79,13 @@ export default async function ManagerDashboard() {
             Ops snapshot
           </h1>
         </div>
-        <Button asChild size="sm" data-testid="manager-review-intakes">
-          <Link href="/manager/pipeline">Review intakes</Link>
-        </Button>
+        <Link
+          href="/manager/pipeline"
+          className={cn(buttonVariants({ size: "sm" }))}
+          data-testid="manager-review-intakes"
+        >
+          Review intakes
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -129,14 +134,15 @@ export default async function ManagerDashboard() {
                     </TableCell>
                     <TableCell>{formatDateTime(intake.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
+                      <Link
+                        href={`/manager/pipeline/${intake.id}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" })
+                        )}
                         data-testid={`manager-review-${intake.id}`}
                       >
-                        <Link href={`/manager/pipeline/${intake.id}`}>Review</Link>
-                      </Button>
+                        Review
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

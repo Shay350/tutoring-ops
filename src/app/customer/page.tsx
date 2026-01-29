@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function CustomerStudentsPage() {
   const supabase = await createClient();
@@ -58,9 +59,13 @@ export default async function CustomerStudentsPage() {
             My students
           </h1>
         </div>
-        <Button asChild variant="outline" size="sm" data-testid="new-intake">
-          <Link href="/customer/intake">Submit intake</Link>
-        </Button>
+        <Link
+          href="/customer/intake"
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          data-testid="new-intake"
+        >
+          Submit intake
+        </Link>
       </div>
 
       <Card>

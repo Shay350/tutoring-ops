@@ -122,7 +122,7 @@ export default async function CustomerHistoryPage() {
             <TableBody>
               {sessions.length > 0 ? (
                 sessions.map((session) => {
-                  const studentName = session.students?.full_name ?? "Student";
+                  const studentName = session.students?.[0]?.full_name ?? "Student";
                   const log = Array.isArray(session.session_logs)
                     ? session.session_logs[0]
                     : session.session_logs ?? null;

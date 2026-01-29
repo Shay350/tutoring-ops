@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
 
-import { approveIntake, assignTutor, createSession } from "./actions";
+type ActionHandler = (
+  prevState: ActionState,
+  formData: FormData
+) => Promise<ActionState>;
 
 function FormMessage({
   message,
@@ -36,8 +40,14 @@ function FormMessage({
   );
 }
 
-export function ApproveIntakeForm({ intakeId }: { intakeId: string }) {
-  const [state, formAction] = useFormState(approveIntake, initialActionState);
+export function ApproveIntakeForm({
+  intakeId,
+  action,
+}: {
+  intakeId: string;
+  action: ActionHandler;
+}) {
+  const [state, formAction] = useFormState(action, initialActionState);
 
   return (
     <Card>
@@ -70,12 +80,14 @@ export function AssignTutorForm({
   intakeId,
   studentId,
   tutors,
+  action,
 }: {
   intakeId: string;
   studentId: string;
   tutors: TutorOption[];
+  action: ActionHandler;
 }) {
-  const [state, formAction] = useFormState(assignTutor, initialActionState);
+  const [state, formAction] = useFormState(action, initialActionState);
 
   return (
     <Card>
@@ -125,12 +137,14 @@ export function CreateSessionForm({
   intakeId,
   studentId,
   tutorId,
+  action,
 }: {
   intakeId: string;
   studentId: string;
   tutorId: string;
+  action: ActionHandler;
 }) {
-  const [state, formAction] = useFormState(createSession, initialActionState);
+  const [state, formAction] = useFormState(action, initialActionState);
 
   return (
     <Card>

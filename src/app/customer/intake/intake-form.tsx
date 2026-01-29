@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
 
-import { submitIntake } from "./actions";
+type IntakeFormProps = {
+  action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
+};
 
-export default function IntakeForm() {
-  const [state, formAction] = useFormState(submitIntake, initialActionState);
+export default function IntakeForm({ action }: IntakeFormProps) {
+  const [state, formAction] = useFormState(action, initialActionState);
 
   return (
     <Card>

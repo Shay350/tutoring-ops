@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function TutorSchedulePage() {
   const supabase = await createClient();
@@ -60,7 +61,7 @@ export default async function TutorSchedulePage() {
                         {formatDate(session.session_date)}
                       </TableCell>
                       <TableCell>
-                        {session.students?.full_name ?? "Student"}
+                        {session.students?.[0]?.full_name ?? "Student"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
@@ -68,16 +69,15 @@ export default async function TutorSchedulePage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
+                        <Link
+                          href={`/tutor/sessions/${session.id}/log`}
+                          className={cn(
+                            buttonVariants({ variant: "outline", size: "sm" })
+                          )}
                           data-testid={`schedule-log-${session.id}`}
                         >
-                          <Link href={`/tutor/sessions/${session.id}/log`}>
-                            {hasLog ? "Edit log" : "Start log"}
-                          </Link>
-                        </Button>
+                          {hasLog ? "Edit log" : "Start log"}
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );
