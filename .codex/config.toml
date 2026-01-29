@@ -1,9 +1,9 @@
 [approvals]
-mode = "off"
+mode = "auto"          # 🔒 NEVER ask for approvals
 
 [execpolicy]
-auto_approve = true
-allow_network = true
+auto_approve = true    # auto-approve all allowed actions
+allow_network = true   # allow network (safe for npm/npx)
 allow_git_writes = true
 
 [execpolicy.allow]
@@ -13,7 +13,18 @@ commands = [
   "npx",
   "pnpm",
   "node",
-  "playwright"
+  "playwright",
+  "bash",
+  "sh",
+  "sed",
+  "awk",
+  "cat",
+  "mkdir",
+  "rm",
+  "cp",
+  "mv",
+  "ls",
+  "find"
 ]
 
 [mcp_servers]
