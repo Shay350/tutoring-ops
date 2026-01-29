@@ -2,10 +2,10 @@ import AppShell, { type NavItem } from "@/components/app-shell";
 import { requireRole } from "@/lib/auth";
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/customer" },
-  { label: "Students", href: "/customer/students" },
-  { label: "Calendar", href: "/customer/calendar" },
-  { label: "Messages", href: "/customer/messages" },
+  { label: "Students", href: "/customer" },
+  { label: "Intake", href: "/customer/intake" },
+  { label: "Session History", href: "/customer/history" },
+  { label: "Messages (Coming soon)", href: "/customer/messages" },
 ];
 
 export default async function CustomerLayout({

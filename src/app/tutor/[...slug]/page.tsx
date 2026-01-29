@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PageProps = {
@@ -11,9 +12,12 @@ export default function TutorPlaceholder({ params }: PageProps) {
     <div className="space-y-6">
       <div>
         <p className="text-sm text-muted-foreground">Tutor</p>
-        <h1 className="text-2xl font-semibold text-slate-900 capitalize">
-          {section}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold text-slate-900 capitalize">
+            {section}
+          </h1>
+          <Badge variant="secondary">Coming soon</Badge>
+        </div>
       </div>
       <Card>
         <CardHeader>
