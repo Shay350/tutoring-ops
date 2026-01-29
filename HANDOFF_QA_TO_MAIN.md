@@ -14,6 +14,7 @@
     - `E2E_MANAGER_EMAIL`, `E2E_MANAGER_PASSWORD`
     - `E2E_TUTOR_EMAIL`, `E2E_TUTOR_PASSWORD`
     - `E2E_TUTOR_NAME`
+  - Note: `tests/unit/migrations.test.ts` auto-skips until a VS1 core migration exists in `supabase/migrations` with `vs1` in the filename.
 
 ## data-testid needed (MAIN)
 Customer intake `/customer/intake`

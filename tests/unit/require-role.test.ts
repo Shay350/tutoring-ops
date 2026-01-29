@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { requireRole } from "../../src/lib/auth";
-import type { Role } from "../../src/lib/roles";
-import { createClient } from "../../src/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 type User = { id: string } | null;
@@ -55,12 +52,35 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("../../src/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("server-only", () => ({}));
+
+vi.mock("@/lib/auth-utils", () => ({
+  isProfileBlocked: (profile: { pending?: boolean | null } | null) =>
+    profile?.pending === true,
+}), { virtual: true });
+
+vi.mock("@/lib/roles", () => ({
+  resolveRolePath: (role?: string | null) => {
+    switch (role) {
+      case "manager":
+        return "/manager";
+      case "tutor":
+        return "/tutor";
+      case "customer":
+        return "/customer";
+      default:
+        return "/login";
+    }
+  },
+}), { virtual: true });
+
+const createClientMock = vi.fn();
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: createClientMock,
+}), { virtual: true });
 
 const redirectMock = redirect as unknown as ReturnType<typeof vi.fn>;
-const createClientMock = createClient as unknown as ReturnType<typeof vi.fn>;
 
 async function expectRedirect(promise: Promise<void>, path: string) {
   await expect(promise).rejects.toThrowError("REDIRECT");
@@ -89,6 +109,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectRedirect(requireRole("manager"), "/login");
   });
 
@@ -101,6 +122,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectRedirect(requireRole("manager"), "/login");
   });
 
@@ -113,6 +135,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectRedirect(requireRole("manager"), "/login");
   });
 
@@ -124,6 +147,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectRedirect(requireRole("manager"), "/no-access");
   });
 
@@ -135,6 +159,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectRedirect(requireRole("manager"), "/customer");
   });
 
@@ -146,6 +171,7 @@ describe("requireRole", () => {
       })
     );
 
+    const { requireRole } = await import("../../src/lib/auth");
     await expectNoRedirect(requireRole("manager"));
   });
 
@@ -157,6 +183,7 @@ describe("requireRole", () => {
       })
     );
 
-    await expectRedirect(requireRole("tutor" as Role), "/login");
+    const { requireRole } = await import("../../src/lib/auth");
+    await expectRedirect(requireRole("tutor"), "/login");
   });
 });
