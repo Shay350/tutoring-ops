@@ -5,11 +5,41 @@ import { createClient } from "@/lib/supabase/server";
 
 import LoginForm from "./login-form";
 
-export default async function LoginPage() {
+type LoginPageProps = {
+  searchParams?: {
+    error?: string;
+    message?: string;
+    error_description?: string;
+  };
+};
+
+function formatOAuthMessage(message: string | null) {
+  if (!message) {
+    return "OAuth sign-in failed. Please try again.";
+  }
+  if (message === "missing_code") {
+    return "OAuth sign-in failed: missing authorization code. Please try again.";
+  }
+  return `OAuth sign-in failed: ${message}`;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const isOAuthError = searchParams?.error === "oauth";
+  const rawMessage =
+    searchParams?.message ?? searchParams?.error_description ?? null;
+  let message = rawMessage;
+  if (message) {
+    try {
+      message = decodeURIComponent(message);
+    } catch {
+      // Leave message as-is if decoding fails.
+    }
+  }
+  const oauthMessage = isOAuthError ? formatOAuthMessage(message) : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-6 py-12">
@@ -31,7 +61,7 @@ export default async function LoginPage() {
               </Link>
             </div>
           ) : (
-            <LoginForm />
+            <LoginForm initialError={oauthMessage} />
           )}
         </CardContent>
       </Card>

@@ -27,3 +27,11 @@ test("no-access page renders", async ({ page }) => {
     page.getByRole("heading", { name: "Not authorized" })
   ).toBeVisible();
 });
+
+test("oauth callback without code redirects with message", async ({ page }) => {
+  await page.goto("http://localhost:3000/auth/callback");
+  await page.waitForURL("**/login?error=oauth**");
+  await expect(
+    page.getByText(/OAuth sign-in failed: missing authorization code/i)
+  ).toBeVisible();
+});

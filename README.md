@@ -23,8 +23,18 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Supabase
 
 - Apply SQL migrations from `supabase/migrations` in the Supabase SQL editor after pulling updates.
-- Required env vars in `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Google OAuth redirect URL template: `https://<project-ref>.supabase.co/auth/v1/callback`.
+- Required env vars in `.env.local` (see `.env.example`):
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Supabase Dashboard → Authentication → URL Configuration:
+  - Site URL:
+    - Dev: `http://localhost:3000`
+    - Prod: `https://<your-prod-domain>`
+  - Additional Redirect URLs:
+    - `http://localhost:3000/auth/callback`
+    - `https://<your-prod-domain>/auth/callback`
+- Google OAuth redirect URL template (Google Console):
+  - `https://<project-ref>.supabase.co/auth/v1/callback`
 
 ## Learn More
 
