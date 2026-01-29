@@ -172,6 +172,26 @@ export function CreateSessionForm({
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="start_time">Start time</Label>
+              <Input
+                id="start_time"
+                name="start_time"
+                type="time"
+                required
+                data-testid="session-start-time"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end_time">End time</Label>
+              <Input
+                id="end_time"
+                name="end_time"
+                type="time"
+                required
+                data-testid="session-end-time"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <select
                 id="status"

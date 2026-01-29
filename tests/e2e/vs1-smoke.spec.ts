@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const shouldRun = process.env.E2E_RUN_VS1 === "1";
 
-async function login(page, role: "customer" | "manager" | "tutor") {
+async function login(page: Page, role: "customer" | "manager" | "tutor") {
   const email = process.env[`E2E_${role.toUpperCase()}_EMAIL`];
   const password = process.env[`E2E_${role.toUpperCase()}_PASSWORD`];
 
@@ -56,12 +56,14 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
 
     await page.getByTestId("create-session").click();
     await page.getByTestId("session-date").fill("2026-02-05");
+    await page.getByTestId("session-start-time").fill("15:00");
+    await page.getByTestId("session-end-time").fill("16:00");
     await page.getByTestId("session-submit").click();
     await expect(page.getByTestId("session-created")).toBeVisible();
 
     await page.context().clearCookies();
     await login(page, "tutor");
-    await page.goto("http://localhost:3000/tutor/schedule");
+    await page.goto("http://localhost:3000/tutor/schedule?week=2026-02-02");
 
     await page.getByTestId("session-row").filter({ hasText: studentName }).click();
     await page.getByTestId("session-log-topics").fill("Fractions and ratios");

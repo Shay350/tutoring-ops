@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 const navItems: NavItem[] = [
   { label: "Students", href: "/customer" },
   { label: "Intake", href: "/customer/intake" },
+  { label: "Upcoming Sessions", href: "/customer/schedule" },
   { label: "Session History", href: "/customer/history" },
   { label: "Messages (Coming soon)", href: "/customer/messages" },
 ];

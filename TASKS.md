@@ -147,52 +147,54 @@ VERTICAL SLICE 2 — Scheduling + Master Schedule
 GOAL:
 Turn sessions into a real planning tool for managers, tutors, and customers.
 
+STATUS: COMPLETE (2026-01-29)
+
 ------------------------------------------------------------
 VS2 — DB Tasks
 ------------------------------------------------------------
-- Extend sessions:
-  - start_time
-  - end_time
-  - recurrence_rule (simple weekly template)
-- Index sessions by tutor_id + date
+- [x] Extend sessions:
+  - [x] start_time
+  - [x] end_time
+  - [x] recurrence_rule (simple weekly template)
+- [x] Index sessions by tutor_id + date
 
 RLS:
-- Tutors see only their sessions
-- Customers see sessions for their students
-- Managers see all
+- [x] Tutors see only their sessions
+- [x] Customers see sessions for their students
+- [x] Managers see all
 
 ------------------------------------------------------------
 VS2 — Backend Tasks
 ------------------------------------------------------------
-- Create recurring sessions from template
-- Query weekly schedule per role
-- Prevent overlapping sessions per tutor
+- [x] Create recurring sessions from template
+- [x] Query weekly schedule per role
+- [x] Prevent overlapping sessions per tutor
 
 ------------------------------------------------------------
 VS2 — UI Tasks
 ------------------------------------------------------------
-- Manager:
-  - Master Schedule (list/grid by date + tutor)
-- Tutor:
-  - Weekly schedule view
-- Customer:
-  - Upcoming sessions list
+- [x] Manager:
+  - [x] Master Schedule (list/grid by date + tutor)
+- [x] Tutor:
+  - [x] Weekly schedule view
+- [x] Customer:
+  - [x] Upcoming sessions list
 
 (No drag-and-drop; deterministic creation only)
 
 ------------------------------------------------------------
 VS2 — Testing
 ------------------------------------------------------------
-- Recurring session creation
-- Overlap prevention
-- Schedule visibility per role
+- [x] Recurring session creation
+- [x] Overlap prevention
+- [x] Schedule visibility per role
 
 ------------------------------------------------------------
 VS2 — Exit Criteria
 ------------------------------------------------------------
-- Managers can plan a week
-- Tutors and customers see accurate schedules
-- No overlapping tutor sessions allowed
+- [x] Managers can plan a week
+- [x] Tutors and customers see accurate schedules
+- [x] No overlapping tutor sessions allowed
 
 ============================================================
 VERTICAL SLICE 3 — Progress Tracking + At-Risk Flags

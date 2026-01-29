@@ -8,6 +8,8 @@ import {
   toActionSuccess,
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
+import type { SessionTimeSlot } from "@/lib/schedule";
+import { findOverlap, validateTimeRange } from "@/lib/schedule";
 
 export async function approveIntake(
   _prevState: ActionState,
@@ -140,6 +142,7 @@ export async function assignTutor(
 
   revalidatePath("/manager");
   revalidatePath("/manager/pipeline");
+  revalidatePath("/manager/schedule");
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
   }
@@ -159,6 +162,8 @@ export async function createSession(
   const studentId = String(formData.get("student_id") ?? "").trim();
   const tutorId = String(formData.get("tutor_id") ?? "").trim();
   const sessionDate = String(formData.get("session_date") ?? "").trim();
+  const startTime = String(formData.get("start_time") ?? "").trim();
+  const endTime = String(formData.get("end_time") ?? "").trim();
   const status = String(formData.get("status") ?? "scheduled").trim();
   const intakeId = String(formData.get("intake_id") ?? "").trim();
 
@@ -168,6 +173,11 @@ export async function createSession(
 
   if (!sessionDate || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
     return toActionError("Provide a valid session date.");
+  }
+
+  const timeError = validateTimeRange(startTime, endTime);
+  if (timeError) {
+    return toActionError(timeError);
   }
 
   const { data: assignment, error: assignmentError } = await context.supabase
@@ -186,12 +196,36 @@ export async function createSession(
     return toActionError("Tutor is not assigned to this student.");
   }
 
+  const { data: existingSessions, error: existingError } = await context.supabase
+    .from("sessions")
+    .select("session_date, start_time, end_time")
+    .eq("tutor_id", tutorId)
+    .eq("session_date", sessionDate);
+
+  if (existingError) {
+    return toActionError("Unable to verify tutor availability.");
+  }
+
+  const overlapMessage = findOverlap(existingSessions ?? [], [
+    {
+      session_date: sessionDate,
+      start_time: startTime,
+      end_time: endTime,
+    } satisfies SessionTimeSlot,
+  ]);
+
+  if (overlapMessage) {
+    return toActionError(overlapMessage);
+  }
+
   const { error } = await context.supabase.from("sessions").insert({
     student_id: studentId,
     tutor_id: tutorId,
     created_by: context.user.id,
     status: status || "scheduled",
     session_date: sessionDate,
+    start_time: startTime,
+    end_time: endTime,
   });
 
   if (error) {

@@ -57,7 +57,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth-utils", () => ({
   isProfileBlocked: (profile: { pending?: boolean | null } | null) =>
     profile?.pending === true,
-}), { virtual: true });
+}));
 
 vi.mock("@/lib/roles", () => ({
   resolveRolePath: (role?: string | null) => {
@@ -72,13 +72,13 @@ vi.mock("@/lib/roles", () => ({
         return "/login";
     }
   },
-}), { virtual: true });
+}));
 
 const createClientMock = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: createClientMock,
-}), { virtual: true });
+}));
 
 const redirectMock = redirect as unknown as ReturnType<typeof vi.fn>;
 

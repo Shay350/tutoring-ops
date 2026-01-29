@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +59,8 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   let sessions: Array<{
     id: string;
     session_date: string | null;
+    start_time: string | null;
+    end_time: string | null;
     status: string | null;
   }> = [];
   let tutors: Array<{ id: string; full_name: string | null }> = [];
@@ -73,7 +75,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
         .maybeSingle(),
       supabase
         .from("sessions")
-        .select("id, session_date, status")
+        .select("id, session_date, start_time, end_time, status")
         .eq("student_id", student.id)
         .order("session_date", { ascending: false }),
       supabase
@@ -224,6 +226,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -234,6 +237,9 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                       <TableCell className="font-medium">
                         {formatDate(session.session_date)}
                       </TableCell>
+                      <TableCell>
+                        {formatTimeRange(session.start_time, session.end_time)}
+                      </TableCell>
                       <TableCell className="capitalize">
                         {session.status ?? "scheduled"}
                       </TableCell>
@@ -241,7 +247,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center text-sm">
+                    <TableCell colSpan={3} className="text-center text-sm">
                       No sessions yet.
                     </TableCell>
                   </TableRow>

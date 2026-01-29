@@ -6,11 +6,17 @@ import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./login-form";
 
 type LoginPageProps = {
-  searchParams?: {
-    error?: string;
-    message?: string;
-    error_description?: string;
-  };
+  searchParams?:
+    | {
+        error?: string;
+        message?: string;
+        error_description?: string;
+      }
+    | Promise<{
+        error?: string;
+        message?: string;
+        error_description?: string;
+      }>;
 };
 
 function formatOAuthMessage(message: string | null) {
@@ -28,9 +34,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isOAuthError = searchParams?.error === "oauth";
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const isOAuthError = resolvedSearchParams?.error === "oauth";
   const rawMessage =
-    searchParams?.message ?? searchParams?.error_description ?? null;
+    resolvedSearchParams?.message ??
+    resolvedSearchParams?.error_description ??
+    null;
   let message = rawMessage;
   if (message) {
     try {
