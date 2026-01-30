@@ -16,6 +16,7 @@ declare
   v_sessions_completed integer := 0;
   v_last_session_at timestamptz;
   v_last_session_delta integer;
+  v_snapshot_id uuid;
 begin
   if public.is_manager(auth.uid()) then
     v_authorized := true;
@@ -55,17 +56,14 @@ begin
   into v_sessions_completed, v_last_session_at, v_last_session_delta
   from ordered;
 
-  if exists (select 1 from public.progress_snapshots where student_id = p_student_id) then
-    update public.progress_snapshots
-      set sessions_completed = v_sessions_completed,
-          last_session_at = v_last_session_at,
-          attendance_rate = p_attendance_rate,
-          homework_completion = p_homework_completion,
-          last_session_delta = v_last_session_delta,
-          notes = p_notes,
-          updated_at = now()
-      where student_id = p_student_id;
-  else
+  select id
+    into v_snapshot_id
+    from public.progress_snapshots
+    where student_id = p_student_id
+    order by updated_at desc nulls last
+    limit 1;
+
+  if v_snapshot_id is null then
     insert into public.progress_snapshots (
       student_id,
       sessions_completed,
@@ -85,6 +83,16 @@ begin
       p_notes,
       now()
     );
+  else
+    update public.progress_snapshots
+      set sessions_completed = v_sessions_completed,
+          last_session_at = v_last_session_at,
+          attendance_rate = p_attendance_rate,
+          homework_completion = p_homework_completion,
+          last_session_delta = v_last_session_delta,
+          notes = p_notes,
+          updated_at = now()
+      where id = v_snapshot_id;
   end if;
 end;
 $$;
