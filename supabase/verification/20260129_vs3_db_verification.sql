@@ -34,6 +34,9 @@ values (
 )
 returning id;
 
+-- Expect: can call progress snapshot updater (uses full session history)
+select public.upsert_progress_snapshot(:student_id, 92, 88, 'Updated via function');
+
 -- =====================
 -- TUTOR
 -- =====================
@@ -47,6 +50,9 @@ update public.progress_snapshots
       updated_at = now()
   where student_id = :student_id
 returning id;
+
+-- Expect: can call progress snapshot updater for assigned student
+select public.upsert_progress_snapshot(:student_id, 95, 85, 'Tutor refresh');
 
 -- =====================
 -- CUSTOMER

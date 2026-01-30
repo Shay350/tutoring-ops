@@ -15,13 +15,16 @@ import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
+type SearchParams = { q?: string };
+
 type PageProps = {
-  searchParams?: { q?: string };
+  searchParams?: SearchParams | Promise<SearchParams>;
 };
 
 export default async function ManagerPipelinePage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const supabase = await createClient();
-  const searchQuery = String(searchParams?.q ?? "").trim();
+  const searchQuery = String(resolvedSearchParams?.q ?? "").trim();
   let intakeQuery = supabase
     .from("intakes")
     .select("id, student_name, student_grade, status, subjects, created_at")

@@ -20,16 +20,19 @@ import AtRiskForm from "./at-risk-form";
 
 type SearchParams = { risk?: string | string[] };
 
+type PageProps = {
+  searchParams?: SearchParams | Promise<SearchParams>;
+};
+
 export default async function ManagerStudentsPage({
   searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+}: PageProps) {
   const supabase = await createClient();
 
-  const riskParam = Array.isArray(searchParams.risk)
-    ? searchParams.risk[0]
-    : searchParams.risk;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const riskParam = Array.isArray(resolvedSearchParams?.risk)
+    ? resolvedSearchParams?.risk[0]
+    : resolvedSearchParams?.risk;
   const showAtRiskOnly = riskParam === "at";
 
   let studentsQuery = supabase

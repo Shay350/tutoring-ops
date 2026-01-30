@@ -26,16 +26,19 @@ import RecurringSessionForm from "./recurring-session-form";
 
 type SearchParams = { week?: string | string[] };
 
+type PageProps = {
+  searchParams?: SearchParams | Promise<SearchParams>;
+};
+
 export default async function ManagerSchedulePage({
   searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+}: PageProps) {
   const supabase = await createClient();
 
-  const weekParam = Array.isArray(searchParams.week)
-    ? searchParams.week[0]
-    : searchParams.week;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const weekParam = Array.isArray(resolvedSearchParams?.week)
+    ? resolvedSearchParams?.week[0]
+    : resolvedSearchParams?.week;
   const anchorDate = weekParam ? parseDateKey(weekParam) : new Date();
   const weekStart = getWeekStart(anchorDate ?? new Date());
   const weekDates = getWeekDates(weekStart);

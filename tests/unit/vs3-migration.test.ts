@@ -50,4 +50,18 @@ describe("VS3 migration coverage", () => {
     expect(sql).toMatch(/Tutors can create progress snapshots/i);
     expect(sql).toMatch(/Tutors can update progress snapshots/i);
   });
+
+  it("defines the progress snapshot updater function", () => {
+    if (!fs.existsSync(migrationsDir)) {
+      return;
+    }
+
+    const sql = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => file.endsWith(".sql"))
+      .map((file) => readMigration(path.join(migrationsDir, file)))
+      .join("\n");
+
+    expect(sql).toMatch(/upsert_progress_snapshot/i);
+  });
 });
