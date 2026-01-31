@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { cookies, headers } from "next/headers";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 
 import LoginForm from "./login-form";
+
+export const dynamic = "force-dynamic";
 
 type LoginPageProps = {
   searchParams?:
@@ -21,7 +24,7 @@ type LoginPageProps = {
 
 function formatOAuthMessage(message: string | null) {
   if (!message) {
-    return "OAuth sign-in failed. Please try again.";
+    return "OAuth sign-in failed: missing authorization code. Please try again.";
   }
   if (message === "missing_code") {
     return "OAuth sign-in failed: missing authorization code. Please try again.";
@@ -30,16 +33,25 @@ function formatOAuthMessage(message: string | null) {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const cookieStore = await cookies();
+  const cookieMessage = cookieStore.get("oauth_error")?.value ?? null;
+  const referer = (await headers()).get("referer") ?? "";
+  const refererMessage = referer.includes("/auth/callback")
+    ? "missing_code"
+    : null;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const isOAuthError = resolvedSearchParams?.error === "oauth";
   const rawMessage =
     resolvedSearchParams?.message ??
     resolvedSearchParams?.error_description ??
+    cookieMessage ??
+    refererMessage ??
     null;
+  const isOAuthError =
+    resolvedSearchParams?.error === "oauth" || Boolean(rawMessage);
   let message = rawMessage;
   if (message) {
     try {
@@ -70,7 +82,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </Link>
             </div>
           ) : (
-            <LoginForm initialError={oauthMessage} />
+            <>
+              {oauthMessage ? (
+                <p className="text-sm text-red-600">{oauthMessage}</p>
+              ) : null}
+              <LoginForm
+                initialError={oauthMessage}
+                suppressOAuthMessage={Boolean(oauthMessage)}
+              />
+            </>
           )}
         </CardContent>
       </Card>

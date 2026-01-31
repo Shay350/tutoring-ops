@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,21 +10,80 @@ import { createClient } from "@/lib/supabase/client";
 
 type LoginFormProps = {
   initialError?: string | null;
+  suppressOAuthMessage?: boolean;
 };
 
-export default function LoginForm({ initialError = null }: LoginFormProps) {
+function formatOAuthMessage(message: string | null) {
+  if (!message) {
+    return "OAuth sign-in failed: missing authorization code. Please try again.";
+  }
+  if (message === "missing_code") {
+    return "OAuth sign-in failed: missing authorization code. Please try again.";
+  }
+  return `OAuth sign-in failed: ${message}`;
+}
+
+function readCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const match = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  return match ? match.slice(name.length + 1) : null;
+}
+
+export default function LoginForm({
+  initialError = null,
+  suppressOAuthMessage = false,
+}: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOAuthSubmitting, setIsOAuthSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(initialError);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
-  useEffect(() => {
-    setError(initialError);
-  }, [initialError]);
+  const errorParam = searchParams.get("error");
+  const rawMessage =
+    searchParams.get("message") ?? searchParams.get("error_description");
+  let message = rawMessage;
+  if (message) {
+    try {
+      message = decodeURIComponent(message);
+    } catch {
+      // Leave message as-is if decoding fails.
+    }
+  }
+  let cookieMessage = readCookieValue("oauth_error");
+  if (cookieMessage) {
+    try {
+      cookieMessage = decodeURIComponent(cookieMessage);
+    } catch {
+      // Leave cookie message as-is if decoding fails.
+    }
+  }
+  const referrer =
+    typeof document === "undefined" ? "" : document.referrer ?? "";
+  const referrerOAuthFallback = referrer.includes("/auth/callback")
+    ? formatOAuthMessage("missing_code")
+    : null;
+  const oauthMessage = suppressOAuthMessage
+    ? null
+    : initialError ??
+      (errorParam === "oauth" || rawMessage
+        ? formatOAuthMessage(message)
+        : cookieMessage
+          ? formatOAuthMessage(cookieMessage)
+          : referrerOAuthFallback);
+
+  const error = formError ?? (hasInteracted ? null : oauthMessage);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
+    setHasInteracted(true);
+    setFormError(null);
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
@@ -38,7 +97,7 @@ export default function LoginForm({ initialError = null }: LoginFormProps) {
     });
 
     if (signInError) {
-      setError(signInError.message);
+      setFormError(signInError.message);
       setIsSubmitting(false);
       return;
     }
@@ -47,7 +106,8 @@ export default function LoginForm({ initialError = null }: LoginFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
-    setError(null);
+    setHasInteracted(true);
+    setFormError(null);
     setIsOAuthSubmitting(true);
 
     const supabase = createClient();
@@ -60,7 +120,7 @@ export default function LoginForm({ initialError = null }: LoginFormProps) {
     });
 
     if (oauthError) {
-      setError(oauthError.message);
+      setFormError(oauthError.message);
       setIsOAuthSubmitting(false);
     }
   };

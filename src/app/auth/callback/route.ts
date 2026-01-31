@@ -7,7 +7,15 @@ function buildLoginRedirect(origin: string, message?: string) {
   if (message) {
     redirectUrl.searchParams.set("message", message);
   }
-  return NextResponse.redirect(redirectUrl);
+  const response = NextResponse.redirect(redirectUrl);
+  if (message) {
+    response.cookies.set("oauth_error", message, {
+      path: "/",
+      maxAge: 60,
+      sameSite: "lax",
+    });
+  }
+  return response;
 }
 
 export async function GET(request: NextRequest) {
