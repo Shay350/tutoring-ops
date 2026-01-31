@@ -10,6 +10,10 @@ begin
 end;
 $$;
 
+-- Billing flag for idempotent membership charging.
+alter table public.sessions
+  add column if not exists billed_to_membership boolean not null default false;
+
 create table if not exists public.memberships (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.students (id) on delete cascade,
