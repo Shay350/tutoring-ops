@@ -4,7 +4,7 @@ import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
-export type NavItem = { label: string; href: string };
+export type NavItem = { label: string; href: string; testId?: string };
 
 type AppShellProps = {
   title: string;
@@ -40,6 +40,7 @@ export default function AppShell({
                 key={item.href}
                 href={item.href}
                 className={buttonVariants({ variant: "ghost", size: "sm" })}
+                data-testid={item.testId}
               >
                 {item.label}
               </Link>

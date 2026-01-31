@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatHours } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,16 @@ export default async function SessionLogPage({ params }: PageProps) {
   if (!session) {
     notFound();
   }
+
+  const studentId = session.students?.[0]?.id ?? null;
+
+  const { data: membership } = studentId
+    ? await supabase
+        .from("memberships")
+        .select("status, hours_remaining, plan_type, renewal_date")
+        .eq("student_id", studentId)
+        .maybeSingle()
+    : { data: null };
 
   const log = Array.isArray(session.session_logs)
     ? session.session_logs[0]
@@ -64,20 +74,33 @@ export default async function SessionLogPage({ params }: PageProps) {
         <CardHeader>
           <CardTitle>Session details</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">
-              {session.students?.[0]?.full_name ?? "Student"}
-            </span>
-            <Badge variant="secondary" className="capitalize">
-              {session.status ?? "scheduled"}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatDate(session.session_date)}
-          </p>
-        </CardContent>
-      </Card>
+          <CardContent className="grid gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">
+                {session.students?.[0]?.full_name ?? "Student"}
+              </span>
+              <Badge variant="secondary" className="capitalize">
+                {session.status ?? "scheduled"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatDate(session.session_date)}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Hours remaining:</span>
+              <span data-testid="session-hours-remaining">
+                {membership
+                  ? `${formatHours(membership.hours_remaining)} hrs`
+                  : "—"}
+              </span>
+              {membership?.status ? (
+                <Badge variant="secondary" className="capitalize">
+                  {membership.status}
+                </Badge>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
 
       <SessionLogForm
         sessionId={session.id}

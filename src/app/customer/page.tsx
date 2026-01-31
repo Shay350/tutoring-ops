@@ -80,6 +80,7 @@ export default async function CustomerStudentsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Tutor</TableHead>
                 <TableHead>Added</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,12 +104,23 @@ export default async function CustomerStudentsPage() {
                         {activeAssignment?.tutor_id ? "Assigned" : "Unassigned"}
                       </TableCell>
                       <TableCell>{formatDate(student.created_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/customer/students/${student.id}`}
+                          className={cn(
+                            buttonVariants({ variant: "outline", size: "sm" })
+                          )}
+                          data-testid={`customer-student-view-${student.id}`}
+                        >
+                          View
+                        </Link>
+                      </TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-sm">
+                  <TableCell colSpan={5} className="text-center text-sm">
                     No students yet. Submit an intake to get started.
                   </TableCell>
                 </TableRow>

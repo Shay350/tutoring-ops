@@ -16,7 +16,12 @@ import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-import { approveIntake, assignTutor, createSession } from "../actions";
+import {
+  approveIntake,
+  assignTutor,
+  completeSession,
+  createSession,
+} from "../actions";
 import {
   ApproveIntakeForm,
   AssignTutorForm,
@@ -62,6 +67,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     start_time: string | null;
     end_time: string | null;
     status: string | null;
+    billed_to_membership: boolean | null;
   }> = [];
   let tutors: Array<{ id: string; full_name: string | null }> = [];
 
@@ -75,7 +81,9 @@ export default async function IntakeDetailPage({ params }: PageProps) {
         .maybeSingle(),
       supabase
         .from("sessions")
-        .select("id, session_date, start_time, end_time, status")
+        .select(
+          "id, session_date, start_time, end_time, status, billed_to_membership"
+        )
         .eq("student_id", student.id)
         .order("session_date", { ascending: false }),
       supabase
@@ -228,6 +236,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                   <TableHead>Date</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -242,6 +251,65 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                       </TableCell>
                       <TableCell className="capitalize">
                         {session.status ?? "scheduled"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {session.status === "completed" ? (
+                          session.billed_to_membership ? (
+                            <span className="text-xs text-muted-foreground">
+                              Billed
+                            </span>
+                          ) : (
+                            <form action={completeSession}>
+                              <input
+                                type="hidden"
+                                name="session_id"
+                                value={session.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="intake_id"
+                                value={intake.id}
+                              />
+                              <button
+                                type="submit"
+                                className={cn(
+                                  buttonVariants({
+                                    variant: "outline",
+                                    size: "sm",
+                                  })
+                                )}
+                                data-testid={`session-bill-${session.id}`}
+                              >
+                                Bill hours
+                              </button>
+                            </form>
+                          )
+                        ) : (
+                          <form action={completeSession}>
+                            <input
+                              type="hidden"
+                              name="session_id"
+                              value={session.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="intake_id"
+                              value={intake.id}
+                            />
+                            <button
+                              type="submit"
+                              className={cn(
+                                buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                })
+                              )}
+                              data-testid={`session-complete-${session.id}`}
+                            >
+                              Mark complete
+                            </button>
+                          </form>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

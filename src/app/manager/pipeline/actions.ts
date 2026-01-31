@@ -8,8 +8,84 @@ import {
   toActionSuccess,
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
+import { computeBillingDecision } from "@/lib/membership";
 import type { SessionTimeSlot } from "@/lib/schedule";
 import { findOverlap, validateTimeRange } from "@/lib/schedule";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+type SessionBillingRow = {
+  id: string;
+  student_id: string;
+  status: string | null;
+  billed_to_membership: boolean | null;
+};
+
+async function applySessionBilling({
+  supabase,
+  session,
+  actorId,
+}: {
+  supabase: SupabaseClient;
+  session: SessionBillingRow;
+  actorId: string;
+}): Promise<string | null> {
+  const { data: membership, error: membershipError } = await supabase
+    .from("memberships")
+    .select("id, hours_remaining")
+    .eq("student_id", session.student_id)
+    .maybeSingle();
+
+  if (membershipError || !membership) {
+    return "Membership not found for this student.";
+  }
+
+  const decision = computeBillingDecision({
+    sessionStatus: session.status,
+    billedToMembership: session.billed_to_membership,
+    hoursRemaining: membership.hours_remaining,
+  });
+
+  if (decision.error) {
+    return decision.error;
+  }
+
+  if (!decision.shouldBill) {
+    return null;
+  }
+
+  const { error: updateError } = await supabase
+    .from("memberships")
+    .update({ hours_remaining: decision.nextHoursRemaining })
+    .eq("id", membership.id);
+
+  if (updateError) {
+    return "Unable to update membership hours.";
+  }
+
+  const { error: adjustmentError } = await supabase
+    .from("membership_adjustments")
+    .insert({
+      membership_id: membership.id,
+      actor_id: actorId,
+      delta_hours: -1,
+      reason: `Session ${session.id} completed`,
+    });
+
+  if (adjustmentError) {
+    return "Membership hours updated, but audit log failed.";
+  }
+
+  const { error: sessionUpdateError } = await supabase
+    .from("sessions")
+    .update({ billed_to_membership: true })
+    .eq("id", session.id);
+
+  if (sessionUpdateError) {
+    return "Membership billed, but session billing flag failed.";
+  }
+
+  return null;
+}
 
 export async function approveIntake(
   _prevState: ActionState,
@@ -218,18 +294,34 @@ export async function createSession(
     return toActionError(overlapMessage);
   }
 
-  const { error } = await context.supabase.from("sessions").insert({
-    student_id: studentId,
-    tutor_id: tutorId,
-    created_by: context.user.id,
-    status: status || "scheduled",
-    session_date: sessionDate,
-    start_time: startTime,
-    end_time: endTime,
-  });
+  const { data: sessionRow, error } = await context.supabase
+    .from("sessions")
+    .insert({
+      student_id: studentId,
+      tutor_id: tutorId,
+      created_by: context.user.id,
+      status: status || "scheduled",
+      session_date: sessionDate,
+      start_time: startTime,
+      end_time: endTime,
+    })
+    .select("id, student_id, status, billed_to_membership")
+    .maybeSingle();
 
-  if (error) {
+  if (error || !sessionRow) {
     return toActionError("Unable to create session.");
+  }
+
+  if (status === "completed") {
+    const billingError = await applySessionBilling({
+      supabase: context.supabase,
+      session: sessionRow,
+      actorId: context.user.id,
+    });
+
+    if (billingError) {
+      return toActionError(`Session created, but ${billingError}`);
+    }
   }
 
   revalidatePath("/manager");
@@ -237,6 +329,87 @@ export async function createSession(
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
   }
+  if (status === "completed") {
+    revalidatePath("/manager/students");
+    revalidatePath("/customer/membership");
+    revalidatePath("/tutor/students");
+  }
 
   return toActionSuccess("Session created.");
+}
+
+export async function completeSession(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const context = await getActionContext("manager");
+  if ("error" in context) {
+    return toActionError(context.error);
+  }
+
+  const sessionId = String(formData.get("session_id") ?? "").trim();
+  const intakeId = String(formData.get("intake_id") ?? "").trim();
+
+  if (!sessionId) {
+    return toActionError("Missing session id.");
+  }
+
+  const { data: session, error: sessionError } = await context.supabase
+    .from("sessions")
+    .select("id, student_id, status, billed_to_membership")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessionError || !session) {
+    return toActionError("Session not found.");
+  }
+
+  let sessionForBilling: SessionBillingRow = session;
+
+  if (session.status !== "completed") {
+    const { data: updatedSession, error: updateError } = await context.supabase
+      .from("sessions")
+      .update({ status: "completed" })
+      .eq("id", sessionId)
+      .select("id, student_id, status, billed_to_membership")
+      .maybeSingle();
+
+    if (updateError || !updatedSession) {
+      return toActionError("Unable to complete session.");
+    }
+
+    sessionForBilling = updatedSession;
+  }
+
+  if (sessionForBilling.billed_to_membership) {
+    revalidatePath("/manager");
+    revalidatePath("/manager/pipeline");
+    if (intakeId) {
+      revalidatePath(`/manager/pipeline/${intakeId}`);
+    }
+    revalidatePath(`/manager/students/${sessionForBilling.student_id}`);
+    revalidatePath("/tutor/students");
+    return toActionSuccess("Session already billed.");
+  }
+
+  const billingError = await applySessionBilling({
+    supabase: context.supabase,
+    session: sessionForBilling,
+    actorId: context.user.id,
+  });
+
+  if (billingError) {
+    return toActionError(billingError);
+  }
+
+  revalidatePath("/manager");
+  revalidatePath("/manager/pipeline");
+  if (intakeId) {
+    revalidatePath(`/manager/pipeline/${intakeId}`);
+  }
+  revalidatePath(`/manager/students/${sessionForBilling.student_id}`);
+  revalidatePath("/customer/membership");
+  revalidatePath("/tutor/students");
+
+  return toActionSuccess("Session completed and billed.");
 }

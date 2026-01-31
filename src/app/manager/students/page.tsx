@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatHours } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,14 @@ type SearchParams = { risk?: string | string[] };
 
 type PageProps = {
   searchParams?: SearchParams | Promise<SearchParams>;
+};
+
+type MembershipRow = {
+  id: string;
+  student_id: string | null;
+  plan_type: string | null;
+  status: string | null;
+  hours_remaining: number | null;
 };
 
 export default async function ManagerStudentsPage({
@@ -57,6 +65,25 @@ export default async function ManagerStudentsPage({
   const students = studentsResult.data ?? [];
   const totalCount = totalCountResult.count ?? 0;
   const atRiskCount = atRiskCountResult.count ?? 0;
+
+  const studentIds = students.map((student) => student.id);
+
+  const { data: memberships } = studentIds.length
+    ? await supabase
+        .from("memberships")
+        .select("id, student_id, plan_type, status, hours_remaining")
+        .in("student_id", studentIds)
+    : { data: [] };
+
+  const membershipByStudent = (memberships ?? []).reduce<
+    Record<string, MembershipRow>
+  >((acc, membership) => {
+    if (!membership?.student_id) {
+      return acc;
+    }
+    acc[membership.student_id] = membership;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -121,49 +148,96 @@ export default async function ManagerStudentsPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table data-testid="manager-student-list">
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Risk</TableHead>
+                <TableHead>Membership</TableHead>
+                <TableHead>Hours remaining</TableHead>
                 <TableHead>Added</TableHead>
                 <TableHead>Update</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {students.length > 0 ? (
-                students.map((student) => (
-                  <TableRow key={student.id} data-testid="student-row">
-                    <TableCell className="font-medium">
-                      {student.full_name}
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {student.status ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      {student.at_risk ? (
-                        <Badge variant="secondary" className="bg-red-100 text-red-700">
-                          At-risk
+                students.map((student) => {
+                  const membership = membershipByStudent[student.id];
+
+                  return (
+                    <TableRow
+                      key={student.id}
+                      data-testid={`manager-student-row-${student.id}`}
+                    >
+                      <TableCell className="font-medium">
+                        {student.full_name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {student.status ?? "active"}
                         </Badge>
-                      ) : (
-                        <Badge variant="secondary">Stable</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{formatDate(student.created_at)}</TableCell>
-                    <TableCell>
-                      <AtRiskForm
-                        studentId={student.id}
-                        isAtRisk={Boolean(student.at_risk)}
-                        reason={student.at_risk_reason}
-                        action={updateAtRiskStatus}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        {student.at_risk ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-red-100 text-red-700"
+                          >
+                            At-risk
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Stable</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {membership ? (
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">
+                              {membership.plan_type ?? "Plan"}
+                            </div>
+                            <div className="text-xs text-muted-foreground capitalize">
+                              {membership.status ?? "active"}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            No membership
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell data-testid="manager-hours-remaining">
+                        {membership
+                          ? `${formatHours(membership.hours_remaining)} hrs`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>{formatDate(student.created_at)}</TableCell>
+                      <TableCell>
+                        <AtRiskForm
+                          studentId={student.id}
+                          isAtRisk={Boolean(student.at_risk)}
+                          reason={student.at_risk_reason}
+                          action={updateAtRiskStatus}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/manager/students/${student.id}`}
+                          className={cn(
+                            buttonVariants({ variant: "outline", size: "sm" })
+                          )}
+                          data-testid={`manager-student-view-${student.id}`}
+                        >
+                          View
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm">
+                  <TableCell colSpan={8} className="text-center text-sm">
                     {showAtRiskOnly
                       ? "No at-risk students right now."
                       : "No students yet."}
