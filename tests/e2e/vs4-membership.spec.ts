@@ -61,10 +61,11 @@ async function createSession(page: Page, sessionDate: string) {
 
 async function openStudentMembership(page: Page, studentName: string) {
   await page.goto(`${baseUrl}/manager/students`);
-  await page.getByTestId("student-search").fill(studentName);
-  const studentRow = page.getByTestId("student-row").filter({ hasText: studentName });
+  const list = page.getByTestId("manager-student-list");
+  await expect(list).toBeVisible();
+  const studentRow = list.getByRole("row", { name: new RegExp(studentName) });
   await expect(studentRow).toBeVisible();
-  await studentRow.getByTestId("student-open").click();
+  await studentRow.getByRole("link", { name: "View" }).click();
   await expect(page.getByTestId("membership-editor")).toBeVisible();
 }
 
@@ -157,7 +158,7 @@ test.describe("@smoke VS4 membership visibility", () => {
     await login(page, "tutor");
     await page.goto(`${baseUrl}/tutor/students`);
 
-    const studentRow = page.getByTestId("student-row").filter({ hasText: studentName });
+    const studentRow = page.getByRole("row", { name: new RegExp(studentName) });
     await expect(studentRow).toBeVisible();
     await expect(studentRow.getByTestId("membership-hours-remaining-display")).toHaveText(/6/);
     await expect(page.getByTestId("membership-edit")).toHaveCount(0);
