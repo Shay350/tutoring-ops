@@ -7,7 +7,7 @@ const navItems: NavItem[] = [
   { label: "Intake", href: "/customer/intake" },
   { label: "Upcoming Sessions", href: "/customer/schedule" },
   { label: "Session History", href: "/customer/history" },
-  { label: "Messages (Coming soon)", href: "/customer/messages" },
+  { label: "Messages", href: "/customer/messages" },
 ];
 
 export default async function CustomerLayout({

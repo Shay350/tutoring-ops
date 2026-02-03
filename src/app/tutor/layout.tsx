@@ -5,7 +5,6 @@ const navItems: NavItem[] = [
   { label: "Today", href: "/tutor" },
   { label: "Schedule", href: "/tutor/schedule" },
   { label: "Students", href: "/tutor/students" },
-  { label: "Messages (Coming soon)", href: "/tutor/messages" },
 ];
 
 export default async function TutorLayout({

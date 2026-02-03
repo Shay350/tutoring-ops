@@ -6,6 +6,7 @@ const navItems: NavItem[] = [
   { label: "Pipeline", href: "/manager/pipeline" },
   { label: "Master Schedule", href: "/manager/schedule" },
   { label: "Students", href: "/manager/students", testId: "nav-manager-students" },
+  { label: "Messages", href: "/manager/messages" },
   { label: "Invites", href: "/manager/invites" },
   { label: "Reports (Coming soon)", href: "/manager/reports" },
 ];

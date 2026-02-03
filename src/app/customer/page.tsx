@@ -105,15 +105,26 @@ export default async function CustomerStudentsPage() {
                       </TableCell>
                       <TableCell>{formatDate(student.created_at)}</TableCell>
                       <TableCell className="text-right">
-                        <Link
-                          href={`/customer/students/${student.id}`}
-                          className={cn(
-                            buttonVariants({ variant: "outline", size: "sm" })
-                          )}
-                          data-testid={`customer-student-view-${student.id}`}
-                        >
-                          View
-                        </Link>
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/customer/messages?student=${student.id}`}
+                            className={cn(
+                              buttonVariants({ variant: "outline", size: "sm" })
+                            )}
+                            data-testid={`customer-student-message-${student.id}`}
+                          >
+                            Message
+                          </Link>
+                          <Link
+                            href={`/customer/students/${student.id}`}
+                            className={cn(
+                              buttonVariants({ variant: "outline", size: "sm" })
+                            )}
+                            data-testid={`customer-student-view-${student.id}`}
+                          >
+                            View
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
