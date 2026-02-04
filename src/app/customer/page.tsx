@@ -19,7 +19,7 @@ export default async function CustomerStudentsPage() {
   const supabase = await createClient();
   const { data: students } = await supabase
     .from("students")
-    .select("id, full_name, status, created_at")
+    .select("id, short_code, full_name, status, created_at")
     .order("created_at", { ascending: false });
 
   const studentIds = students?.map((student) => student.id) ?? [];
@@ -91,6 +91,7 @@ export default async function CustomerStudentsPage() {
                   const activeAssignment = studentAssignments.find(
                     (assignment) => assignment.status === "active"
                   );
+                  const studentCode = student.short_code ?? student.id;
 
                   return (
                     <TableRow key={student.id}>
@@ -116,7 +117,7 @@ export default async function CustomerStudentsPage() {
                             Message
                           </Link>
                           <Link
-                            href={`/customer/students/${student.id}`}
+                            href={`/customer/students/${studentCode}`}
                             className={cn(
                               buttonVariants({ variant: "outline", size: "sm" })
                             )}

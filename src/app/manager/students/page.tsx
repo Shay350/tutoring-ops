@@ -45,7 +45,9 @@ export default async function ManagerStudentsPage({
 
   let studentsQuery = supabase
     .from("students")
-    .select("id, full_name, status, created_at, at_risk, at_risk_reason")
+    .select(
+      "id, short_code, full_name, status, created_at, at_risk, at_risk_reason"
+    )
     .order("created_at", { ascending: false });
 
   if (showAtRiskOnly) {
@@ -165,6 +167,7 @@ export default async function ManagerStudentsPage({
               {students.length > 0 ? (
                 students.map((student) => {
                   const membership = membershipByStudent[student.id];
+                  const studentCode = student.short_code ?? student.id;
 
                   return (
                     <TableRow
@@ -223,7 +226,7 @@ export default async function ManagerStudentsPage({
                       </TableCell>
                       <TableCell className="text-right">
                         <Link
-                          href={`/manager/students/${student.id}`}
+                          href={`/manager/students/${studentCode}`}
                           className={cn(
                             buttonVariants({ variant: "outline", size: "sm" })
                           )}

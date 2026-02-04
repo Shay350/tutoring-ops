@@ -27,27 +27,23 @@ export default async function ManagerStudentDetail({ params }: PageProps) {
   const supabase = await createClient();
   const studentId = params.studentId;
 
-  const [studentResult, membershipResult] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id, full_name, status, created_at")
-      .eq("id", studentId)
-      .maybeSingle(),
-    supabase
-      .from("memberships")
-      .select(
-        "id, plan_type, status, hours_total, hours_remaining, renewal_date, notes"
-      )
-      .eq("student_id", studentId)
-      .maybeSingle(),
-  ]);
+  const { data: student } = await supabase
+    .from("students")
+    .select("id, full_name, status, created_at")
+    .or(`id.eq.${studentId},short_code.eq.${studentId}`)
+    .maybeSingle();
 
-  if (!studentResult.data) {
+  if (!student) {
     notFound();
   }
 
-  const student = studentResult.data;
-  const membership = membershipResult.data ?? null;
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select(
+      "id, plan_type, status, hours_total, hours_remaining, renewal_date, notes"
+    )
+    .eq("student_id", student.id)
+    .maybeSingle();
 
   const { data: adjustments } = membership
     ? await supabase

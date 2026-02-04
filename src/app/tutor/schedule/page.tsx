@@ -44,7 +44,7 @@ export default async function TutorSchedulePage({
   const { data: sessions } = await supabase
     .from("sessions")
     .select(
-      "id, session_date, start_time, end_time, status, students(id, full_name), session_logs(id)"
+      "id, short_code, session_date, start_time, end_time, status, students(id, full_name), session_logs(id)"
     )
     .gte("session_date", weekDates[0])
     .lte("session_date", weekDates[6])
@@ -129,6 +129,8 @@ export default async function TutorSchedulePage({
                           ? session.session_logs.length > 0
                           : Boolean(session.session_logs);
 
+                        const sessionCode = session.short_code ?? session.id;
+
                         return (
                           <TableRow key={session.id}>
                             <TableCell className="font-medium">
@@ -139,7 +141,7 @@ export default async function TutorSchedulePage({
                             </TableCell>
                             <TableCell>
                               <Link
-                                href={`/tutor/sessions/${session.id}/log`}
+                                href={`/tutor/sessions/${sessionCode}/log`}
                                 className="font-medium text-sky-700 hover:underline"
                                 data-testid="session-row"
                               >
@@ -153,7 +155,7 @@ export default async function TutorSchedulePage({
                             </TableCell>
                             <TableCell>
                               <Link
-                                href={`/tutor/sessions/${session.id}/log`}
+                                href={`/tutor/sessions/${sessionCode}/log`}
                                 className={cn(
                                   buttonVariants({ variant: "outline", size: "sm" })
                                 )}

@@ -8,6 +8,7 @@ import {
   toActionSuccess,
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
+import { generateUniqueShortCode } from "@/lib/short-codes";
 
 export async function submitIntake(
   _prevState: ActionState,
@@ -54,6 +55,12 @@ export async function submitIntake(
     return toActionError("Location is required.");
   }
 
+  const shortCode = await generateUniqueShortCode(
+    context.supabase,
+    "intakes",
+    "INT"
+  );
+
   const { error } = await context.supabase.from("intakes").insert({
     customer_id: context.user.id,
     status: "submitted",
@@ -63,6 +70,7 @@ export async function submitIntake(
     availability,
     goals,
     location,
+    short_code: shortCode,
   });
 
   if (error) {

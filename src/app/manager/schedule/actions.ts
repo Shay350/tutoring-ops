@@ -16,6 +16,7 @@ import {
   validateTimeRange,
   findOverlap,
 } from "@/lib/schedule";
+import { generateUniqueShortCode } from "@/lib/short-codes";
 
 function parseAssignmentPair(pair: string): { studentId: string; tutorId: string } {
   const [studentId, tutorId] = pair.split("|");
@@ -126,16 +127,26 @@ export async function createRecurringSessions(
 
   const recurrenceRule = `weekly:${weekdays.join(",")}`;
 
-  const payload = sessionDates.map((date) => ({
-    student_id: studentId,
-    tutor_id: tutorId,
-    created_by: context.user.id,
-    status: status || "scheduled",
-    session_date: date,
-    start_time: startTime,
-    end_time: endTime,
-    recurrence_rule: recurrenceRule,
-  }));
+  const payload = [];
+  for (const date of sessionDates) {
+    const shortCode = await generateUniqueShortCode(
+      context.supabase,
+      "sessions",
+      "SES"
+    );
+
+    payload.push({
+      student_id: studentId,
+      tutor_id: tutorId,
+      created_by: context.user.id,
+      status: status || "scheduled",
+      session_date: date,
+      start_time: startTime,
+      end_time: endTime,
+      recurrence_rule: recurrenceRule,
+      short_code: shortCode,
+    });
+  }
 
   const { error } = await context.supabase.from("sessions").insert(payload);
 

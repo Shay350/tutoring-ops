@@ -24,7 +24,7 @@ export default async function SessionLogPage({ params }: PageProps) {
     .select(
       "id, student_id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
     )
-    .eq("id", sessionId)
+    .or(`id.eq.${sessionId},short_code.eq.${sessionId}`)
     .maybeSingle();
 
   if (!session) {

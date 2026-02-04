@@ -11,6 +11,7 @@ import type { ActionState } from "@/lib/action-state";
 import { computeBillingDecision } from "@/lib/membership";
 import type { SessionTimeSlot } from "@/lib/schedule";
 import { findOverlap, validateTimeRange } from "@/lib/schedule";
+import { generateUniqueShortCode } from "@/lib/short-codes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SessionBillingRow = {
@@ -131,6 +132,12 @@ export async function approveIntake(
     return toActionError("This intake has already been approved.");
   }
 
+  const studentShortCode = await generateUniqueShortCode(
+    context.supabase,
+    "students",
+    "STU"
+  );
+
   const { error: studentError } = await context.supabase
     .from("students")
     .insert({
@@ -138,6 +145,7 @@ export async function approveIntake(
       customer_id: intakeResult.data.customer_id,
       full_name: intakeResult.data.student_name,
       status: "active",
+      short_code: studentShortCode,
     });
 
   if (studentError) {
@@ -294,6 +302,12 @@ export async function createSession(
     return toActionError(overlapMessage);
   }
 
+  const sessionShortCode = await generateUniqueShortCode(
+    context.supabase,
+    "sessions",
+    "SES"
+  );
+
   const { data: sessionRow, error } = await context.supabase
     .from("sessions")
     .insert({
@@ -304,6 +318,7 @@ export async function createSession(
       session_date: sessionDate,
       start_time: startTime,
       end_time: endTime,
+      short_code: sessionShortCode,
     })
     .select("id, student_id, status, billed_to_membership")
     .maybeSingle();

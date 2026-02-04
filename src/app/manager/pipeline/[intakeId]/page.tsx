@@ -42,27 +42,23 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const intakeId = params.intakeId;
 
-  const [intakeResult, studentResult] = await Promise.all([
-    supabase
-      .from("intakes")
-      .select(
-        "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
-      )
-      .eq("id", intakeId)
-      .maybeSingle(),
-    supabase
-      .from("students")
-      .select("id, full_name, status, created_at")
-      .eq("intake_id", intakeId)
-      .maybeSingle(),
-  ]);
+  const { data: intake } = await supabase
+    .from("intakes")
+    .select(
+      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
+    )
+    .or(`id.eq.${intakeId},short_code.eq.${intakeId}`)
+    .maybeSingle();
 
-  if (!intakeResult.data) {
+  if (!intake) {
     notFound();
   }
 
-  const intake = intakeResult.data;
-  const student = studentResult.data ?? null;
+  const { data: student } = await supabase
+    .from("students")
+    .select("id, full_name, status, created_at")
+    .eq("intake_id", intake.id)
+    .maybeSingle();
 
   let assignment:
     | { id: string; tutor_id: string | null; status: string | null }

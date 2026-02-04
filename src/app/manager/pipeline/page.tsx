@@ -27,7 +27,9 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
   const searchQuery = String(resolvedSearchParams?.q ?? "").trim();
   let intakeQuery = supabase
     .from("intakes")
-    .select("id, student_name, student_grade, status, subjects, created_at")
+    .select(
+      "id, short_code, student_name, student_grade, status, subjects, created_at"
+    )
     .order("created_at", { ascending: false });
 
   if (searchQuery) {
@@ -75,7 +77,10 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
             </TableHeader>
             <TableBody>
               {intakes && intakes.length > 0 ? (
-                intakes.map((intake) => (
+                intakes.map((intake) => {
+                  const intakeCode = intake.short_code ?? intake.id;
+
+                  return (
                   <TableRow key={intake.id} data-testid="intake-row">
                     <TableCell className="font-medium">
                       {intake.student_name}
@@ -94,7 +99,7 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
                     <TableCell>{formatDateTime(intake.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <Link
-                        href={`/manager/pipeline/${intake.id}`}
+                        href={`/manager/pipeline/${intakeCode}`}
                         className={cn(
                           buttonVariants({ variant: "outline", size: "sm" })
                         )}
@@ -104,7 +109,8 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
                       </Link>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-sm">
