@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatHours } from "@/lib/format";
+import { isUuid, normalizeShortCode } from "@/lib/ids";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -18,13 +19,18 @@ type PageProps = {
 export default async function SessionLogPage({ params }: PageProps) {
   const supabase = await createClient();
   const sessionId = params.sessionId;
+  const isSessionUuid = isUuid(sessionId);
+  const lookupColumn: "id" | "short_code" = isSessionUuid ? "id" : "short_code";
+  const lookupValue = isSessionUuid
+    ? sessionId
+    : normalizeShortCode(sessionId);
 
   const { data: session } = await supabase
     .from("sessions")
     .select(
       "id, student_id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
     )
-    .or(`id.eq.${sessionId},short_code.eq.${sessionId}`)
+    .eq(lookupColumn, lookupValue)
     .maybeSingle();
 
   if (!session) {

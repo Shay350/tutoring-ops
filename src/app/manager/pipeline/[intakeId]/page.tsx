@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
+import { isUuid, normalizeShortCode } from "@/lib/ids";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -41,13 +42,16 @@ async function handleCompleteSession(formData: FormData) {
 export default async function IntakeDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const intakeId = params.intakeId;
+  const isIntakeUuid = isUuid(intakeId);
+  const lookupColumn: "id" | "short_code" = isIntakeUuid ? "id" : "short_code";
+  const lookupValue = isIntakeUuid ? intakeId : normalizeShortCode(intakeId);
 
   const { data: intake } = await supabase
     .from("intakes")
     .select(
       "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
     )
-    .or(`id.eq.${intakeId},short_code.eq.${intakeId}`)
+    .eq(lookupColumn, lookupValue)
     .maybeSingle();
 
   if (!intake) {

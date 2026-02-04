@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatDateTime, formatHours } from "@/lib/format";
+import { isUuid, normalizeShortCode } from "@/lib/ids";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +27,16 @@ type PageProps = {
 export default async function ManagerStudentDetail({ params }: PageProps) {
   const supabase = await createClient();
   const studentId = params.studentId;
+  const isStudentUuid = isUuid(studentId);
+  const lookupColumn: "id" | "short_code" = isStudentUuid ? "id" : "short_code";
+  const lookupValue = isStudentUuid
+    ? studentId
+    : normalizeShortCode(studentId);
 
   const { data: student } = await supabase
     .from("students")
     .select("id, full_name, status, created_at")
-    .or(`id.eq.${studentId},short_code.eq.${studentId}`)
+    .eq(lookupColumn, lookupValue)
     .maybeSingle();
 
   if (!student) {
