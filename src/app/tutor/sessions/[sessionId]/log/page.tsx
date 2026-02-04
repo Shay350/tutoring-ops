@@ -20,18 +20,19 @@ export default async function SessionLogPage({ params }: PageProps) {
   const supabase = await createClient();
   const sessionId = params.sessionId;
   const isSessionUuid = isUuid(sessionId);
-  const lookupColumn: "id" | "short_code" = isSessionUuid ? "id" : "short_code";
   const lookupValue = isSessionUuid
     ? sessionId
     : normalizeShortCode(sessionId);
 
-  const { data: session } = await supabase
+  const sessionQuery = supabase
     .from("sessions")
     .select(
       "id, student_id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
-    )
-    .eq(lookupColumn, lookupValue)
-    .maybeSingle();
+    );
+
+  const { data: session } = isSessionUuid
+    ? await sessionQuery.eq("id", lookupValue).maybeSingle()
+    : await sessionQuery.ilike("short_code", lookupValue).maybeSingle();
 
   if (!session) {
     notFound();
