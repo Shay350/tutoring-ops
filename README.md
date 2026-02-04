@@ -36,6 +36,12 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - Google OAuth redirect URL template (Google Console):
   - `https://<project-ref>.supabase.co/auth/v1/callback`
 
+## Reports & exports
+
+- Manager reports live at `/manager/reports` (monthly summaries + CSV exports).
+- CSV endpoints (manager-only, server-side): `/manager/reports/export/sessions?month=YYYY-MM` and `/manager/reports/export/session-logs?month=YYYY-MM`.
+- VS6 smoke test is gated by `E2E_RUN_VS6=1`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,11 @@ import {
 type PageProps = {
   params: { intakeId: string };
 };
+
+async function handleCompleteSession(formData: FormData) {
+  "use server";
+  await completeSession(initialActionState, formData);
+}
 
 export default async function IntakeDetailPage({ params }: PageProps) {
   const supabase = await createClient();
@@ -259,7 +265,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                               Billed
                             </span>
                           ) : (
-                            <form action={completeSession}>
+                            <form action={handleCompleteSession}>
                               <input
                                 type="hidden"
                                 name="session_id"
@@ -285,7 +291,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
                             </form>
                           )
                         ) : (
-                          <form action={completeSession}>
+                          <form action={handleCompleteSession}>
                             <input
                               type="hidden"
                               name="session_id"

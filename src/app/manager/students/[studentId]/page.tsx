@@ -143,7 +143,7 @@ export default async function ManagerStudentDetail({ params }: PageProps) {
                           </TableCell>
                           <TableCell>{adjustment.reason}</TableCell>
                           <TableCell>
-                            {adjustment.profiles?.full_name ?? "Manager"}
+                            {adjustment.profiles?.[0]?.full_name ?? "Manager"}
                           </TableCell>
                         </TableRow>
                       ))

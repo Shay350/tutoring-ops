@@ -53,7 +53,7 @@ export default async function CustomerMembershipPage() {
                     data-testid={`customer-membership-row-${membership.student_id}`}
                   >
                     <TableCell className="font-medium">
-                      {membership.students?.full_name ?? "Student"}
+                      {membership.students?.[0]?.full_name ?? "Student"}
                     </TableCell>
                     <TableCell>{membership.plan_type ?? "Plan"}</TableCell>
                     <TableCell>

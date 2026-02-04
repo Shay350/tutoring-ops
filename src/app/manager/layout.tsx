@@ -8,7 +8,7 @@ const navItems: NavItem[] = [
   { label: "Students", href: "/manager/students", testId: "nav-manager-students" },
   { label: "Messages", href: "/manager/messages" },
   { label: "Invites", href: "/manager/invites" },
-  { label: "Reports (Coming soon)", href: "/manager/reports" },
+  { label: "Reports", href: "/manager/reports" },
 ];
 
 export default async function ManagerLayout({

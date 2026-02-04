@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/format";
@@ -55,7 +55,7 @@ export default async function ManagerMessagesPage({ searchParams }: PageProps) {
     listThreadsForUser(supabase, user.id, "manager"),
     threadParam
       ? listMessagesForThread(supabase, threadParam)
-      : Promise.resolve({ messages: [] }),
+      : Promise.resolve({ messages: [], error: undefined }),
   ]);
 
   const threads = threadsResult.threads;
@@ -158,9 +158,12 @@ export default async function ManagerMessagesPage({ searchParams }: PageProps) {
             ) : (
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>No matching threads.</p>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/manager">Go to dashboard</Link>
-                </Button>
+                <Link
+                  href="/manager"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                >
+                  Go to dashboard
+                </Link>
               </div>
             )}
           </CardContent>

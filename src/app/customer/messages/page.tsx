@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 import { isThreadUnread } from "@/lib/messaging";
@@ -68,7 +68,7 @@ export default async function CustomerMessagesPage({ searchParams }: PageProps) 
     listThreadsForUser(supabase, user.id, "customer"),
     selectedThreadId
       ? listMessagesForThread(supabase, selectedThreadId)
-      : Promise.resolve({ messages: [] }),
+      : Promise.resolve({ messages: [], error: undefined }),
   ]);
 
   const threads = threadsResult.threads;
@@ -148,9 +148,12 @@ export default async function CustomerMessagesPage({ searchParams }: PageProps) 
             ) : (
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>No conversations yet.</p>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/customer">Go to students</Link>
-                </Button>
+                <Link
+                  href="/customer"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                >
+                  Go to students
+                </Link>
               </div>
             )}
           </CardContent>

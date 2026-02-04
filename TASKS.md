@@ -122,7 +122,7 @@ VERTICAL SLICE 6 — Reports & Exports
 GOAL:
 Enable month-end operational reporting for managers.
 
-STATUS: IN PROGRESS
+STATUS: IN PROGRESS (2026-02-04)
 
 ---
 
@@ -155,6 +155,14 @@ STATUS: IN PROGRESS
 
 - Playwright E2E smoke test (E2E_RUN_VS6=1)
 - Deterministic fixtures and dates
+
+---
+
+## VS6 — Deliverables
+
+- Manager reports page (/manager/reports) with month picker and summaries
+- Server-side CSV exports (sessions + session_logs)
+- Playwright E2E smoke test gated by E2E_RUN_VS6
 
 ---
 
