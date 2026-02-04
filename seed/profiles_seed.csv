@@ -1,0 +1,6 @@
+id,email,role,full_name,pending,created_at
+00000000-0000-0000-0000-000000000001,manager@tutorops.local,manager,Morgan Manager,false,2026-02-01T09:00:00Z
+00000000-0000-0000-0000-000000000002,tutor1@tutorops.local,tutor,Taylor Tutor,false,2026-02-01T09:05:00Z
+00000000-0000-0000-0000-000000000003,tutor2@tutorops.local,tutor,Riley Tutor,false,2026-02-01T09:06:00Z
+00000000-0000-0000-0000-000000000004,parent1@tutorops.local,customer,Cameron Customer,false,2026-02-01T09:10:00Z
+00000000-0000-0000-0000-000000000005,parent2@tutorops.local,customer,Jordan Customer,false,2026-02-01T09:12:00Z

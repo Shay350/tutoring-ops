@@ -42,6 +42,22 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - CSV endpoints (manager-only, server-side): `/manager/reports/export/sessions?month=YYYY-MM` and `/manager/reports/export/session-logs?month=YYYY-MM`.
 - VS6 smoke test is gated by `E2E_RUN_VS6=1`.
 
+## Seeding test data
+
+1) Start local Supabase (or reset): `supabase db reset`
+2) Set env vars (service role required):
+   - `NEXT_PUBLIC_SUPABASE_URL` (or `SUPABASE_URL`)
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - Optional: `SEED_DEFAULT_PASSWORD` (defaults to `Password123!`)
+3) Run: `npm run seed`
+
+Seeded accounts (password = `Password123!` unless overridden):
+- manager@tutorops.local (Manager)
+- tutor1@tutorops.local (Tutor)
+- tutor2@tutorops.local (Tutor)
+- parent1@tutorops.local (Customer)
+- parent2@tutorops.local (Customer)
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
