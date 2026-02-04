@@ -1,14 +1,16 @@
 # TASKS — Tutoring Ops App
+
 Vertical-slice driven roadmap. Each slice must be fully end-to-end, production-quality, and leave the app in a working state.
 
 Source of truth:
+
 - SPEC.md for behavior rules / edge cases
 - ARCHITECTURE.md for constraints
 - This file defines WHAT to build and in WHAT ORDER
 
 ============================================================
 GLOBAL CONSTRAINTS
-============================================================
+==================
 
 - Single organization internal tool
 - Roles: Manager, Tutor, Customer
@@ -23,236 +25,184 @@ GLOBAL CONSTRAINTS
 
 ============================================================
 VERTICAL SLICE 1 — Intake → Assign → Session Log (Core Backbone)
-============================================================
+================================================================
 
 GOAL:
 Replace placeholder dashboards with a real, usable tutoring workflow:
 Customer submits intake → Manager assigns tutor → Tutor logs session → Customer sees history.
 
-------------------------------------------------------------
-VS1 — Domain Model (must exist)
-------------------------------------------------------------
-- Intake
-- Student
-- Assignment (student ↔ tutor)
-- Session
-- SessionLog
-- ProgressSnapshot (simple metrics only)
-
-------------------------------------------------------------
-VS1 — DB Tasks (DB Agent)
-------------------------------------------------------------
-
-A1. Create tables
-- intakes
-- students
-- assignments
-- sessions
-- session_logs
-- progress_snapshots (minimal)
-
-Requirements:
-- UUID primary keys
-- created_at timestamps
-- foreign keys with integrity constraints
-- indexes on customer_id, tutor_id, student_id, status fields
-
-A2. RLS policies
-- Customer:
-  - create/read own intakes
-  - read own students, sessions, session_logs, progress
-- Manager:
-  - read/update all intakes
-  - create students, assignments, sessions
-  - read all data
-- Tutor:
-  - read assignments where tutor_id = auth.uid()
-  - read sessions for assigned students
-  - create/update session_logs for assigned students
-
-Requirements:
-- No table accessible without explicit policy
-- Provide verification queries per role
-- Provide rollback notes
-
-------------------------------------------------------------
-VS1 — Backend Tasks (Main Dev)
-------------------------------------------------------------
-
-B1. Server actions / routes
-- submit intake (customer)
-- list/review intakes (manager)
-- approve intake → create student (manager)
-- assign tutor to student (manager)
-- create session (manager)
-- list assigned students + sessions (tutor)
-- create/update session log (tutor)
-- list session history + progress (customer)
-
-Requirements:
-- Uses Supabase server client
-- Input validation
-- Friendly error handling
-
-------------------------------------------------------------
-VS1 — UI Tasks (Main Dev)
-------------------------------------------------------------
-
-C1. Customer
-- Intake form (student info, subjects, availability, goals, location)
-- My Students list (real data)
-- Session History view
-
-C2. Manager
-- Intakes list + detail
-- Approve intake flow
-- Assign tutor flow
-- Create session flow
-
-C3. Tutor
-- Assigned students dashboard
-- Session log editor (topics, homework, next plan, customer-visible summary, private notes)
-
-C4. Navigation
-- Remove or clearly mark non-implemented items as “Coming soon”
-- Role routing enforced
-
-------------------------------------------------------------
-VS1 — Testing (QA Agent)
-------------------------------------------------------------
-
-D1. Unit tests
-- role guards (requireRole / resolveRolePath)
-- intake validation
-- session log permissions
-
-D2. E2E tests
-- customer submits intake
-- manager processes intake → assignment → session
-- tutor logs session
-- customer views history
-
-------------------------------------------------------------
-VS1 — Exit Criteria
-------------------------------------------------------------
-- End-to-end flow works with real data
-- RLS prevents cross-user access
-- No placeholder data on VS1 screens
-- All tests passing
+STATUS: COMPLETE
 
 ============================================================
 VERTICAL SLICE 2 — Scheduling + Master Schedule
-============================================================
+===============================================
 
 GOAL:
 Turn sessions into a real planning tool for managers, tutors, and customers.
 
 STATUS: COMPLETE (2026-01-29)
 
-------------------------------------------------------------
-VS2 — DB Tasks
-------------------------------------------------------------
-- [x] Extend sessions:
-  - [x] start_time
-  - [x] end_time
-  - [x] recurrence_rule (simple weekly template)
-- [x] Index sessions by tutor_id + date
-
-RLS:
-- [x] Tutors see only their sessions
-- [x] Customers see sessions for their students
-- [x] Managers see all
-
-------------------------------------------------------------
-VS2 — Backend Tasks
-------------------------------------------------------------
-- [x] Create recurring sessions from template
-- [x] Query weekly schedule per role
-- [x] Prevent overlapping sessions per tutor
-
-------------------------------------------------------------
-VS2 — UI Tasks
-------------------------------------------------------------
-- [x] Manager:
-  - [x] Master Schedule (list/grid by date + tutor)
-- [x] Tutor:
-  - [x] Weekly schedule view
-- [x] Customer:
-  - [x] Upcoming sessions list
-
-(No drag-and-drop; deterministic creation only)
-
-------------------------------------------------------------
-VS2 — Testing
-------------------------------------------------------------
-- [x] Recurring session creation
-- [x] Overlap prevention
-- [x] Schedule visibility per role
-
-------------------------------------------------------------
-VS2 — Exit Criteria
-------------------------------------------------------------
-- [x] Managers can plan a week
-- [x] Tutors and customers see accurate schedules
-- [x] No overlapping tutor sessions allowed
-
 ============================================================
 VERTICAL SLICE 3 — Progress Tracking + At-Risk Flags
-============================================================
+====================================================
 
 GOAL:
 Make progress measurable and give managers visibility into risk.
 
 STATUS: COMPLETE (2026-01-29)
 
-------------------------------------------------------------
-VS3 — DB Tasks
-------------------------------------------------------------
-- [x] Extend progress_snapshots:
-  - [x] attendance_rate
-  - [x] homework_completion
-  - [x] last_session_delta
-  - [x] updated_at
-- [x] Add at_risk flag + reason on students
+============================================================
+VERTICAL SLICE 4 — Membership Visibility (No Payments)
+======================================================
 
-RLS:
-- [x] Tutors can update progress for assigned students
-- [x] Customers can read progress only
-- [x] Managers can read/update all
+GOAL:
+Make “Membership” a real operational concept without automated billing.
 
-------------------------------------------------------------
-VS3 — Backend Tasks
-------------------------------------------------------------
-- [x] Update progress snapshot on session log submit
-- [x] Manager can mark/unmark at-risk with reason
+STATUS: COMPLETE
 
-------------------------------------------------------------
-VS3 — UI Tasks
-------------------------------------------------------------
-- [x] Tutor:
-  - [x] Progress inputs on session log
-- [x] Customer:
-  - [x] Progress summary view
-- [x] Manager:
-  - [x] At-risk indicator + filter
+---
 
-------------------------------------------------------------
-VS3 — Testing
-------------------------------------------------------------
-- [x] Progress updates propagate correctly
-- [x] At-risk visibility per role
-- [x] Regression tests on VS1/VS2 flows
+## VS4 — Domain Model
 
-------------------------------------------------------------
-VS3 — Exit Criteria
-------------------------------------------------------------
-- Progress changes over time from real logs
-- Managers can identify at-risk students
-- No regression in prior slices
+- Membership
+- MembershipAdjustment (audit trail)
+
+---
+
+## VS4 — Capabilities
+
+- Manager can create/update membership (plan, status, hours, renewal)
+- Manager can adjust hours with reason (positive/negative)
+- Completing a session decrements hours exactly once (idempotent)
+- Tutor sees hours remaining (read-only)
+- Customer sees membership summary (read-only)
+
+---
+
+## VS4 — Exit Criteria
+
+- Membership hours are the source of truth
+- No automated charges
+- RLS enforced per role
+- E2E tests cover manager/tutor/customer visibility
+
+============================================================
+VERTICAL SLICE 5 — Messaging (Customer ↔ Manager)
+=================================================
+
+GOAL:
+Replace email/DMs with in-app communication tied to students.
+
+STATUS: COMPLETE
+
+---
+
+## VS5 — Capabilities
+
+- Thread per student/customer
+- Customer can message manager
+- Manager can reply
+- Unread indicators
+- Strict isolation between customers
+- Tutors have no access by default (least privilege)
+
+---
+
+## VS5 — Exit Criteria
+
+- Messages persist
+- RLS prevents cross-customer access
+- Unread state behaves correctly
+- E2E tests pass
+
+============================================================
+VERTICAL SLICE 6 — Reports & Exports
+====================================
+
+GOAL:
+Enable month-end operational reporting for managers.
+
+STATUS: IN PROGRESS
+
+---
+
+## VS6 — Capabilities
+
+- Manager selects a month (YYYY-MM)
+- Student monthly summary:
+  - session count
+  - total hours
+  - billed sessions count
+  - last session date
+
+- Tutor monthly summary:
+  - session count
+  - total hours
+  - active students count
+
+---
+
+## VS6 — Exports (Server-side only)
+
+- Export sessions CSV for selected month
+- Export session_logs CSV for selected month
+- Stable headers and ordering
+- Manager-only access enforced server-side
+
+---
+
+## VS6 — Testing
+
+- Playwright E2E smoke test (E2E_RUN_VS6=1)
+- Deterministic fixtures and dates
+
+---
+
+## VS6 — Exit Criteria
+
+- Manager can view accurate monthly summaries
+- CSV exports download correctly
+- No data leakage
+- All tests green
+
+============================================================
+VERTICAL SLICE 7 — AI-Assisted Drafts (Human Approval)
+======================================================
+
+GOAL:
+Introduce AI as a safe productivity aid, never autonomous.
+
+STATUS: NOT STARTED
+
+---
+
+## VS7 — Capabilities
+
+- Tutor clicks “Draft parent update” on a session log
+- AI generates draft using session log + progress snapshot
+- Tutor edits and approves
+- Optional manager review gate
+- Customer sees only approved content
+
+---
+
+## VS7 — Constraints
+
+- AI never auto-sends
+- All outputs editable
+- Clear human-in-the-loop UX
+
+---
+
+## VS7 — Exit Criteria
+
+- Drafts are useful but controlled
+- No autonomous actions
+- Clear auditability
 
 ============================================================
 GENERAL RULES
-============================================================
+=============
 
 - Only Main Dev merges into main
 - DB Agent cannot touch app code
