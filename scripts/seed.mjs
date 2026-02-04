@@ -214,29 +214,29 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
 
           usersByEmail.delete(emailKey);
         }
-
-        const { error: updateError } = await supabase.auth.admin.updateUserById(
-          existing.id,
-          {
-            email: profile.email,
-            user_metadata: {
-              full_name: profile.full_name ?? null,
-            },
-            app_metadata: {
-              role: profile.role ?? null,
-            },
-          }
-        );
-
-        if (updateError) {
-          throw new Error(
-            `Failed to update auth user ${profile.email}: ${updateError.message}`
-          );
-        }
-
-        updated += 1;
       }
 
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existing.id,
+        {
+          email: profile.email,
+          password: defaultPassword,
+          user_metadata: {
+            full_name: profile.full_name ?? null,
+          },
+          app_metadata: {
+            role: profile.role ?? null,
+          },
+        }
+      );
+
+      if (updateError) {
+        throw new Error(
+          `Failed to update auth user ${profile.email}: ${updateError.message}`
+        );
+      }
+
+      updated += 1;
       usersByEmail.set(emailKey, {
         id: existing.id,
         email: profile.email,
