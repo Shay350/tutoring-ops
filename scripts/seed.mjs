@@ -178,6 +178,7 @@ async function listAllAuthUsers(supabase) {
 
 async function ensureAuthUsers(supabase, profiles, defaultPassword) {
   let created = 0;
+  let updated = 0;
   const users = await listAllAuthUsers(supabase);
   const usersByEmail = new Map(
     users
@@ -192,12 +193,57 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
 
     const lookup = await supabase.auth.admin.getUserById(profile.id);
     const existing = lookup.data?.user ?? null;
+    const emailKey = profile.email.toLowerCase();
 
     if (existing) {
+      const existingEmail = (existing.email ?? "").toLowerCase();
+
+      if (existingEmail !== emailKey) {
+        const existingByEmail = usersByEmail.get(emailKey) ?? null;
+
+        if (existingByEmail && existingByEmail.id !== existing.id) {
+          const { error: deleteError } = await supabase.auth.admin.deleteUser(
+            existingByEmail.id
+          );
+
+          if (deleteError) {
+            throw new Error(
+              `Failed to delete auth user ${profile.email}: ${deleteError.message}`
+            );
+          }
+
+          usersByEmail.delete(emailKey);
+        }
+
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+          existing.id,
+          {
+            email: profile.email,
+            user_metadata: {
+              full_name: profile.full_name ?? null,
+            },
+            app_metadata: {
+              role: profile.role ?? null,
+            },
+          }
+        );
+
+        if (updateError) {
+          throw new Error(
+            `Failed to update auth user ${profile.email}: ${updateError.message}`
+          );
+        }
+
+        updated += 1;
+      }
+
+      usersByEmail.set(emailKey, {
+        id: existing.id,
+        email: profile.email,
+      });
       continue;
     }
 
-    const emailKey = profile.email.toLowerCase();
     const existingByEmail = usersByEmail.get(emailKey) ?? null;
 
     if (existingByEmail && existingByEmail.id !== profile.id) {
@@ -235,7 +281,7 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
     usersByEmail.set(emailKey, { id: profile.id, email: profile.email });
   }
 
-  console.log(`auth.users: ${created} created`);
+  console.log(`auth.users: ${created} created, ${updated} updated`);
 }
 
 async function main() {
