@@ -149,8 +149,41 @@ async function upsertRows(supabase, table, rows, onConflict = "id") {
   console.log(`${table}: ${rows.length} rows`);
 }
 
+async function listAllAuthUsers(supabase) {
+  const users = [];
+  const perPage = 200;
+  let page = 0;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new Error(`Failed to list auth users: ${error.message}`);
+    }
+
+    users.push(...(data?.users ?? []));
+
+    if (!data?.users || data.users.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return users;
+}
+
 async function ensureAuthUsers(supabase, profiles, defaultPassword) {
   let created = 0;
+  const users = await listAllAuthUsers(supabase);
+  const usersByEmail = new Map(
+    users
+      .filter((user) => Boolean(user.email))
+      .map((user) => [user.email.toLowerCase(), user])
+  );
 
   for (const profile of profiles) {
     if (!profile.id || !profile.email) {
@@ -162,6 +195,23 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
 
     if (existing) {
       continue;
+    }
+
+    const emailKey = profile.email.toLowerCase();
+    const existingByEmail = usersByEmail.get(emailKey) ?? null;
+
+    if (existingByEmail && existingByEmail.id !== profile.id) {
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(
+        existingByEmail.id
+      );
+
+      if (deleteError) {
+        throw new Error(
+          `Failed to delete auth user ${profile.email}: ${deleteError.message}`
+        );
+      }
+
+      usersByEmail.delete(emailKey);
     }
 
     const { error } = await supabase.auth.admin.createUser({
@@ -182,6 +232,7 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
     }
 
     created += 1;
+    usersByEmail.set(emailKey, { id: profile.id, email: profile.email });
   }
 
   console.log(`auth.users: ${created} created`);
