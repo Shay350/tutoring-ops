@@ -1,7 +1,9 @@
-import Link from "next/link";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isProfileBlocked } from "@/lib/auth-utils";
+import { resolveRolePath } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 import LoginForm from "./login-form";
@@ -62,6 +64,24 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
   const oauthMessage = isOAuthError ? formatOAuthMessage(message) : null;
 
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, pending")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && isProfileBlocked(profile)) {
+      redirect("/no-access");
+    }
+
+    if (profile) {
+      redirect(resolveRolePath(profile.role));
+    }
+
+    redirect("/no-access");
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-sky-50 via-white to-white px-6 py-12">
       <Card className="w-full max-w-md">
@@ -72,26 +92,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {user ? (
-            <div className="space-y-2 text-sm">
-              <p className="text-slate-700">
-                You are signed in as <strong>{user.email}</strong>.
-              </p>
-              <Link className="text-sky-700 underline" href="/">
-                Return to home
-              </Link>
-            </div>
-          ) : (
-            <>
-              {oauthMessage ? (
-                <p className="text-sm text-red-600">{oauthMessage}</p>
-              ) : null}
-              <LoginForm
-                initialError={oauthMessage}
-                suppressOAuthMessage={Boolean(oauthMessage)}
-              />
-            </>
-          )}
+          {oauthMessage ? (
+            <p className="text-sm text-red-600">{oauthMessage}</p>
+          ) : null}
+          <LoginForm
+            initialError={oauthMessage}
+            suppressOAuthMessage={Boolean(oauthMessage)}
+          />
         </CardContent>
       </Card>
     </div>

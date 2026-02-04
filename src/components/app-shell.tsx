@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import SignOutButton from "@/components/sign-out-button";
 
 export type NavItem = { label: string; href: string; testId?: string };
 
@@ -46,7 +47,10 @@ export default function AppShell({
               </Link>
             ))}
           </nav>
-          <div className="text-xs text-muted-foreground">Internal build</div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>Internal build</span>
+            <SignOutButton />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl px-6 py-8">{children}</main>
