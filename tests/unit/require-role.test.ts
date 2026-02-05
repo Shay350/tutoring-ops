@@ -187,3 +187,95 @@ describe("requireRole", () => {
     await expectRedirect(requireRole("tutor"), "/login");
   });
 });
+
+describe("requireNonCustomer", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("redirects to /login when there is no user", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: null,
+        profile: null,
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectRedirect(requireNonCustomer(), "/login");
+  });
+
+  it("redirects to /login when auth returns an error", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        userError: new Error("auth failure"),
+        profile: null,
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectRedirect(requireNonCustomer(), "/login");
+  });
+
+  it("redirects to /login when profile lookup fails", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: null,
+        profileError: new Error("profile missing"),
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectRedirect(requireNonCustomer(), "/login");
+  });
+
+  it("redirects to /no-access when profile is pending", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "tutor", pending: true },
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectRedirect(requireNonCustomer(), "/no-access");
+  });
+
+  it("redirects customers to /customer", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "customer", pending: false },
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectRedirect(requireNonCustomer(), "/customer");
+  });
+
+  it("does not redirect for tutors", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "tutor", pending: false },
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectNoRedirect(requireNonCustomer());
+  });
+
+  it("does not redirect for managers", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "manager", pending: false },
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectNoRedirect(requireNonCustomer());
+  });
+});

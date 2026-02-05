@@ -66,6 +66,8 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     await page.goto("http://localhost:3000/tutor/schedule?week=2026-02-02");
 
     await page.getByTestId("session-row").filter({ hasText: studentName }).click();
+    await page.waitForURL("**/tutor/sessions/**/log");
+    const logUrl = page.url();
     await page.getByTestId("session-log-topics").fill("Fractions and ratios");
     await page.getByTestId("session-log-homework").fill("Practice set A");
     await page.getByTestId("session-log-next-plan").fill("Review word problems");
@@ -73,6 +75,13 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     await page.getByTestId("session-log-private-notes").fill("Needs confidence boosts.");
     await page.getByTestId("session-log-submit").click();
     await expect(page.getByTestId("session-log-saved")).toBeVisible();
+
+    await page.context().clearCookies();
+    await login(page, "manager");
+    await page.goto(logUrl);
+    await expect(
+      page.getByRole("heading", { name: "Session log" })
+    ).toBeVisible();
 
     await page.context().clearCookies();
     await login(page, "customer");
