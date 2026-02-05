@@ -13,32 +13,87 @@ import { saveSessionLog } from "./actions";
 import SessionLogForm from "./session-log-form";
 
 type PageProps = {
-  params: { sessionId: string };
+  params: { sessionId?: string } | Promise<{ sessionId?: string }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function SessionLogPage({ params }: PageProps) {
+  const resolvedParams = await Promise.resolve(params);
   const supabase = await createClient();
-  const sessionId = params.sessionId;
+  const sessionId = resolvedParams?.sessionId ?? "";
   const isSessionUuid = isUuid(sessionId);
-  const lookupValue = isSessionUuid
-    ? sessionId
-    : normalizeShortCode(sessionId);
+  const lookupColumn: "id" | "short_code" = isSessionUuid ? "id" : "short_code";
+  const lookupValue = isSessionUuid ? sessionId : normalizeShortCode(sessionId);
 
-  const sessionQuery = supabase
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  const { data: session } = await supabase
     .from("sessions")
-    .select(
-      "id, student_id, session_date, status, students(id, full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes)"
-    );
-
-  const { data: session } = isSessionUuid
-    ? await sessionQuery.eq("id", lookupValue).maybeSingle()
-    : await sessionQuery.ilike("short_code", lookupValue).maybeSingle();
+    .select("id, student_id, session_date, status")
+    .eq(lookupColumn, lookupValue)
+    .maybeSingle();
 
   if (!session) {
+    if (process.env.NODE_ENV === "development") {
+      return (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Tutor</p>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              Debug: session not found
+            </h1>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Session lookup</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                lookupColumn: <span className="font-medium">{lookupColumn}</span>
+              </p>
+              <p>
+                lookupValue: <span className="font-medium">{lookupValue}</span>
+              </p>
+              <p>
+                authUser:{" "}
+                <span className="font-medium">
+                  {user?.id ?? "null"}
+                </span>
+              </p>
+              <p>
+                authError:{" "}
+                <span className="font-medium">
+                  {authError?.message ?? "null"}
+                </span>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
     notFound();
   }
 
-  const studentId = session.students?.[0]?.id ?? null;
+  const studentId = session.student_id ?? null;
+
+  const [{ data: student }, { data: log }] = await Promise.all([
+    studentId
+      ? supabase
+          .from("students")
+          .select("id, full_name")
+          .eq("id", studentId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("session_logs")
+      .select("id, topics, homework, next_plan, customer_summary, private_notes")
+      .eq("session_id", session.id)
+      .maybeSingle(),
+  ]);
 
   const { data: membership } = studentId
     ? await supabase
@@ -47,10 +102,6 @@ export default async function SessionLogPage({ params }: PageProps) {
         .eq("student_id", studentId)
         .maybeSingle()
     : { data: null };
-
-  const log = Array.isArray(session.session_logs)
-    ? session.session_logs[0]
-    : session.session_logs ?? null;
 
   const { data: progressSnapshot } = await supabase
     .from("progress_snapshots")
@@ -84,7 +135,7 @@ export default async function SessionLogPage({ params }: PageProps) {
           <CardContent className="grid gap-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">
-                {session.students?.[0]?.full_name ?? "Student"}
+                {student?.full_name ?? "Student"}
               </span>
               <Badge variant="secondary" className="capitalize">
                 {session.status ?? "scheduled"}

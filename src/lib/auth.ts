@@ -57,3 +57,31 @@ export async function requireRole(requiredRole: Role): Promise<void> {
     redirect(resolveRolePath(role ?? undefined));
   }
 }
+
+export async function requireNonCustomer(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (!user || error) {
+    redirect("/login");
+  }
+
+  const profile = await fetchProfile(supabase, user.id);
+
+  if (!profile) {
+    redirect("/login");
+  }
+
+  if (isProfileBlocked(profile)) {
+    redirect("/no-access");
+  }
+
+  const role = typeof profile.role === "string" ? profile.role : null;
+
+  if (role === "customer") {
+    redirect(resolveRolePath(role ?? undefined));
+  }
+}

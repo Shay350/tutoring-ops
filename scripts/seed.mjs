@@ -152,7 +152,7 @@ async function upsertRows(supabase, table, rows, onConflict = "id") {
 async function listAllAuthUsers(supabase) {
   const users = [];
   const perPage = 200;
-  let page = 0;
+  let page = 1;
 
   while (true) {
     const { data, error } = await supabase.auth.admin.listUsers({
@@ -166,11 +166,11 @@ async function listAllAuthUsers(supabase) {
 
     users.push(...(data?.users ?? []));
 
-    if (!data?.users || data.users.length < perPage) {
+    if (!data?.nextPage) {
       break;
     }
 
-    page += 1;
+    page = data.nextPage;
   }
 
   return users;
@@ -179,11 +179,12 @@ async function listAllAuthUsers(supabase) {
 async function ensureAuthUsers(supabase, profiles, defaultPassword) {
   let created = 0;
   let updated = 0;
+  const normalizeEmail = (value) => (value ?? "").trim().toLowerCase();
   const users = await listAllAuthUsers(supabase);
   const usersByEmail = new Map(
     users
       .filter((user) => Boolean(user.email))
-      .map((user) => [user.email.toLowerCase(), user])
+      .map((user) => [normalizeEmail(user.email), user])
   );
 
   for (const profile of profiles) {
@@ -193,10 +194,10 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
 
     const lookup = await supabase.auth.admin.getUserById(profile.id);
     const existing = lookup.data?.user ?? null;
-    const emailKey = profile.email.toLowerCase();
+    const emailKey = normalizeEmail(profile.email);
 
     if (existing) {
-      const existingEmail = (existing.email ?? "").toLowerCase();
+      const existingEmail = normalizeEmail(existing.email);
 
       if (existingEmail !== emailKey) {
         const existingByEmail = usersByEmail.get(emailKey) ?? null;
@@ -214,6 +215,9 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
 
           usersByEmail.delete(emailKey);
         }
+        if (existingEmail) {
+          usersByEmail.delete(existingEmail);
+        }
       }
 
       const { error: updateError } = await supabase.auth.admin.updateUserById(
@@ -221,6 +225,7 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
         {
           email: profile.email,
           password: defaultPassword,
+          email_confirm: true,
           user_metadata: {
             full_name: profile.full_name ?? null,
           },
@@ -273,8 +278,55 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
       },
     });
 
-    if (error && !error.message.includes("User already registered")) {
-      throw new Error(`Failed to create auth user ${profile.email}: ${error.message}`);
+    if (error) {
+      if (error.message.includes("User already registered")) {
+        const refreshedUsers = await listAllAuthUsers(supabase);
+        const refreshedByEmail = new Map(
+          refreshedUsers
+            .filter((user) => Boolean(user.email))
+            .map((user) => [normalizeEmail(user.email), user])
+        );
+        const conflicting = refreshedByEmail.get(emailKey) ?? null;
+
+        if (conflicting && conflicting.id !== profile.id) {
+          const { error: deleteError } = await supabase.auth.admin.deleteUser(
+            conflicting.id
+          );
+
+          if (deleteError) {
+            throw new Error(
+              `Failed to delete auth user ${profile.email}: ${deleteError.message}`
+            );
+          }
+
+          const { error: retryError } = await supabase.auth.admin.createUser({
+            id: profile.id,
+            email: profile.email,
+            password: defaultPassword,
+            email_confirm: true,
+            user_metadata: {
+              full_name: profile.full_name ?? null,
+            },
+            app_metadata: {
+              role: profile.role ?? null,
+            },
+          });
+
+          if (retryError) {
+            throw new Error(
+              `Failed to create auth user ${profile.email}: ${retryError.message}`
+            );
+          }
+
+          created += 1;
+          usersByEmail.set(emailKey, { id: profile.id, email: profile.email });
+          continue;
+        }
+      }
+
+      throw new Error(
+        `Failed to create auth user ${profile.email}: ${error.message}`
+      );
     }
 
     created += 1;

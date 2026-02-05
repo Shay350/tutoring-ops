@@ -19,6 +19,7 @@ import {
   getWeekStart,
   parseDateKey,
 } from "@/lib/schedule";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +129,7 @@ export default async function TutorSchedulePage({
                         const hasLog = Array.isArray(session.session_logs)
                           ? session.session_logs.length > 0
                           : Boolean(session.session_logs);
+                        const student = getSingle(session.students);
 
                         const sessionCode = session.short_code ?? session.id;
 
@@ -145,7 +147,7 @@ export default async function TutorSchedulePage({
                                 className="font-medium text-sky-700 hover:underline"
                                 data-testid="session-row"
                               >
-                                {session.students?.[0]?.full_name ?? "Student"}
+                                {student?.full_name ?? "Student"}
                               </Link>
                             </TableCell>
                             <TableCell>
