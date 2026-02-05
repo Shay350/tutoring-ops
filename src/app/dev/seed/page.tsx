@@ -15,6 +15,7 @@ import {
 import { isProfileBlocked } from "@/lib/auth-utils";
 import { formatDate } from "@/lib/format";
 import type { Role } from "@/lib/roles";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -225,11 +226,12 @@ export default async function DevSeedIndex() {
                 {(isTutor ? tutorSessions : sessions).length > 0 ? (
                   (isTutor ? tutorSessions : sessions).map((session) => {
                     const code = session.short_code ?? session.id;
+                    const student = getSingle(session.students);
                     return (
                       <TableRow key={session.id}>
                         <TableCell className="font-medium">{code}</TableCell>
                         <TableCell>
-                          {session.students?.[0]?.full_name ?? "Student"}
+                          {student?.full_name ?? "Student"}
                         </TableCell>
                         <TableCell>{formatDate(session.session_date)}</TableCell>
                         <TableCell>

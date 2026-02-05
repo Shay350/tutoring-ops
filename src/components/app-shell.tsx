@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import AuthNetworkDebug from "@/components/dev/auth-network-debug";
 import SignOutButton from "@/components/sign-out-button";
 
 export type NavItem = { label: string; href: string; testId?: string };
@@ -22,7 +23,6 @@ export default function AppShell({
   navItems,
   children,
 }: AppShellProps) {
-
   return (
     <div className="min-h-screen bg-sky-50/60">
       <header className="border-b border-border/60 bg-white/80 backdrop-blur">
@@ -53,6 +53,7 @@ export default function AppShell({
           </div>
         </div>
       </header>
+      {process.env.NODE_ENV === "development" ? <AuthNetworkDebug /> : null}
       <main className="mx-auto w-full max-w-6xl px-6 py-8">{children}</main>
     </div>
   );

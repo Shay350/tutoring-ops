@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,7 @@ export default async function TutorDashboard() {
                   const hasLog = Array.isArray(session.session_logs)
                     ? session.session_logs.length > 0
                     : Boolean(session.session_logs);
+                  const student = getSingle(session.students);
 
                   return (
                     <TableRow key={session.id}>
@@ -126,7 +128,7 @@ export default async function TutorDashboard() {
                         {formatDate(session.session_date)}
                       </TableCell>
                       <TableCell>
-                        {session.students?.[0]?.full_name ?? "Student"}
+                        {student?.full_name ?? "Student"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="capitalize">
