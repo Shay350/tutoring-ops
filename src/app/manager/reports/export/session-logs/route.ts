@@ -1,6 +1,7 @@
 import { isProfileBlocked } from "@/lib/auth-utils";
 import { toCsv } from "@/lib/csv";
 import { buildMonthRange, normalizeMonth } from "@/lib/reports";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { type NextRequest } from "next/server";
 
@@ -46,9 +47,10 @@ type SessionLogRow = {
 type SessionRow = {
   id: string;
   session_date: string | null;
+  status?: string | null;
   student_id: string | null;
   tutor_id: string | null;
-  students?: { full_name: string | null }[] | null;
+  students?: { full_name: string | null }[] | { full_name: string | null } | null;
   session_logs?: SessionLogRow[] | SessionLogRow | null;
 };
 
@@ -70,10 +72,11 @@ export async function GET(request: NextRequest) {
   const { data: sessions, error } = await guard.supabase
     .from("sessions")
     .select(
-      "id, session_date, student_id, tutor_id, students(full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes, created_at, updated_at)"
+      "id, session_date, status, student_id, tutor_id, students(full_name), session_logs(id, topics, homework, next_plan, customer_summary, private_notes, created_at, updated_at)"
     )
     .gte("session_date", range.startDate)
     .lte("session_date", range.endDate)
+    .neq("status", "canceled")
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
 
@@ -131,7 +134,7 @@ export async function GET(request: NextRequest) {
       return [];
     }
 
-    const studentName = session.students?.[0]?.full_name ?? "";
+    const studentName = getSingle(session.students)?.full_name ?? "";
     const tutorName = session.tutor_id ? tutorNames[session.tutor_id] ?? "" : "";
 
     return logs.map((log) => [

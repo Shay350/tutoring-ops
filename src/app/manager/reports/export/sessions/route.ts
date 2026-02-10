@@ -1,6 +1,7 @@
 import { isProfileBlocked } from "@/lib/auth-utils";
 import { toCsv } from "@/lib/csv";
 import { buildMonthRange, normalizeMonth } from "@/lib/reports";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { type NextRequest } from "next/server";
 
@@ -42,7 +43,7 @@ type SessionRow = {
   student_id: string | null;
   tutor_id: string | null;
   created_at: string | null;
-  students?: { full_name: string | null }[] | null;
+  students?: { full_name: string | null }[] | { full_name: string | null } | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
     )
     .gte("session_date", range.startDate)
     .lte("session_date", range.endDate)
+    .neq("status", "canceled")
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
 
@@ -118,7 +120,7 @@ export async function GET(request: NextRequest) {
     session.status,
     session.billed_to_membership,
     session.student_id,
-    session.students?.[0]?.full_name ?? "",
+    getSingle(session.students)?.full_name ?? "",
     session.tutor_id,
     session.tutor_id ? tutorNames[session.tutor_id] ?? "" : "",
     session.created_at,

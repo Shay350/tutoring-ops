@@ -1,4 +1,4 @@
-import { formatDateKey } from "@/lib/schedule";
+import { formatDateKey } from "./schedule";
 
 export type MonthRange = {
   month: string;

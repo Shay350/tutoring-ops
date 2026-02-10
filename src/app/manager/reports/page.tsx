@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatHours } from "@/lib/format";
 import { computeDurationHours, getMonthRange, normalizeMonth } from "@/lib/reports";
+import { getSingle } from "@/lib/relations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-
 
 type SearchParams = { month?: string | string[] };
 
@@ -31,7 +31,7 @@ type SessionRow = {
   billed_to_membership: boolean | null;
   student_id: string | null;
   tutor_id: string | null;
-  students?: { full_name: string | null }[] | null;
+  students?: { full_name: string | null }[] | { full_name: string | null } | null;
 };
 
 type StudentSummary = {
@@ -103,7 +103,7 @@ export default async function ManagerReportsPage({ searchParams }: PageProps) {
       continue;
     }
 
-    const studentName = session.students?.[0]?.full_name ?? "Student";
+    const studentName = getSingle(session.students)?.full_name ?? "Student";
     const hours = computeDurationHours(session.start_time, session.end_time);
     const billedCount = session.billed_to_membership ? 1 : 0;
     const sessionDate = session.session_date ?? null;
