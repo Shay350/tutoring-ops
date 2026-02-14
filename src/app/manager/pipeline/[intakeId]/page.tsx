@@ -43,16 +43,29 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const intakeId = params.intakeId;
   const isIntakeUuid = isUuid(intakeId);
-  const lookupColumn: "id" | "short_code" = isIntakeUuid ? "id" : "short_code";
-  const lookupValue = isIntakeUuid ? intakeId : normalizeShortCode(intakeId);
-
-  const { data: intake } = await supabase
+  const intakeLookup = supabase
     .from("intakes")
     .select(
       "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
-    )
-    .eq(lookupColumn, lookupValue)
-    .maybeSingle();
+    );
+
+  const intakeLookupRaw = String(intakeId ?? "").trim();
+  const intakeLookupNormalized = normalizeShortCode(intakeLookupRaw);
+
+  const intakeResult = isIntakeUuid
+    ? await intakeLookup.eq("id", intakeLookupRaw).maybeSingle()
+    : await intakeLookup.eq("short_code", intakeLookupRaw).maybeSingle();
+
+  const intakeFallbackResult =
+    !isIntakeUuid &&
+    !intakeResult.data &&
+    intakeLookupRaw &&
+    intakeLookupNormalized &&
+    intakeLookupRaw !== intakeLookupNormalized
+      ? await intakeLookup.eq("short_code", intakeLookupNormalized).maybeSingle()
+      : null;
+
+  const intake = intakeResult.data ?? intakeFallbackResult?.data ?? null;
 
   if (!intake) {
     notFound();
