@@ -63,7 +63,11 @@ export default function OperatingHoursForm({
           <p className="text-sm text-muted-foreground">{disabledReason}</p>
         ) : null}
 
-        <form action={formAction} className="space-y-4">
+        <form
+          action={formAction}
+          className="space-y-4"
+          data-testid="operating-hours-form"
+        >
           <div className="space-y-3">
             {ordered.map((row) => {
               const prefix = `weekday_${row.weekday}`;
@@ -71,6 +75,7 @@ export default function OperatingHoursForm({
                 <div
                   key={row.weekday}
                   className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12 md:items-center"
+                  data-testid={`operating-hours-row-${row.weekday}`}
                 >
                   <div className="md:col-span-2">
                     <p className="text-sm font-medium text-slate-900">

@@ -103,6 +103,7 @@ export default function WeekCalendar({
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <div
+          data-testid="week-calendar"
           className="grid min-w-[960px]"
           style={{ gridTemplateColumns: `140px repeat(${weekDates.length}, minmax(0, 1fr))` }}
         >

@@ -1,4 +1,4 @@
-import { parseTimeToMinutes } from "@/lib/schedule";
+import { parseTimeToMinutes } from "./schedule";
 
 export type OperatingHoursRow = {
   weekday: number;
@@ -63,4 +63,3 @@ export function operatingHoursWindowMinutes(row: OperatingHoursRow): {
 
   return { openMinutes, closeMinutes };
 }
-
