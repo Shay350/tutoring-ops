@@ -174,6 +174,272 @@ STATUS: COMPLETE (2026-02-10)
 - All tests green
 
 ============================================================
+POST-VS6 — Decisions Needed
+===========================
+
+The following roadmap items depend on product direction changes vs current constraints in SPEC.md
+and this file’s GLOBAL CONSTRAINTS (no payments; manager invites only).
+
+- Do we want to allow payments (Stripe payment links) for session packs, or keep billing fully manual/off-platform?
+- Do we want a public marketing site (home/about/etc.) even if onboarding stays invite-only?
+- Do we want a public “request access” form (no account creation) that routes to manager review + invites?
+
+============================================================
+VERTICAL SLICE 8 — Schedule UX + Availability (Calendar + Prepaid Guardrails)
+============================================================================
+
+GOAL:
+Upgrade scheduling into an ops-grade calendar with clear availability rules, and ensure
+upcoming sessions align with prepaid/membership hours.
+
+STATUS: NOT STARTED
+
+---
+
+## VS8 — Capabilities (Manager)
+
+- Calendar view improvements:
+  - horizontal / calendar-style view (vs table-first)
+  - do not “grey out” full sessions; show them as full/unavailable but readable
+- Operating hours:
+  - manager-configurable operating hours (by day of week)
+  - changes reflect immediately in scheduling UI and slot suggestions
+- Availability UX (YouCanBook.me-inspired):
+  - clear open/closed time windows
+  - capacity / remaining slots visible without hiding context
+- Prepaid guardrails:
+  - upcoming sessions visibility based on membership hours remaining
+  - warnings when schedule exceeds prepaid hours (no silent overbooking)
+  - optional hard guard: prevent creating sessions beyond prepaid hours unless manager explicitly overrides (audited)
+
+---
+
+## VS8 — Capabilities (Tutor)
+
+- Tutor schedule is based on assigned/scheduled sessions only (no ambiguous “all sessions” view)
+- Tutor sees the tutor assigned to each scheduled slot (ensures “present tutor slotted to time” is the source of truth)
+
+---
+
+## VS8 — Constraints
+
+- No drag-and-drop calendar
+- No fully autonomous actions (slotting suggestions are fine; must be manager-approved)
+- All config stored in Postgres with RLS (default deny; manager-only write)
+
+---
+
+## VS8 — Exit Criteria
+
+- Calendar view is usable for daily operations
+- Operating hours changes are reflected everywhere
+- Tutor schedule is derived from assigned sessions
+- Prepaid guardrails prevent accidental overscheduling
+- E2E coverage for key scheduling paths remains green
+
+============================================================
+VERTICAL SLICE 9 — Intake → Automated Slotting (Deterministic Suggestions)
+=========================================================================
+
+GOAL:
+Reduce manager scheduling time by generating proposed slots after intake, using availability rules
+and constraints, while keeping humans in control.
+
+STATUS: NOT STARTED
+
+---
+
+## VS9 — Capabilities
+
+- After customer intake submission, system produces slotting suggestions:
+  - based on operating hours + tutor availability + session duration rules
+  - respects constraints provided in intake (“TY + slotting”)
+  - location-aware once VS10 exists
+- Manager reviews and approves suggestions before they become scheduled sessions
+- Clear explanation for why a slot was suggested (deterministic, debuggable)
+
+---
+
+## VS9 — Constraints
+
+- No “auto-schedule” without a manager approval action
+- No AI requirement (this is deterministic logic)
+- All suggestions stored in Postgres with RLS (manager-only)
+
+---
+
+## VS9 — Exit Criteria
+
+- Managers can reliably schedule from intake with minimal manual work
+- Suggestions are explainable and correct enough to trust (with human review)
+- E2E covers intake → suggestions → approved schedule
+
+---
+
+============================================================
+VERTICAL SLICE 10 — Multi-Location Admin (Single Org, Many Locations)
+=====================================================================
+
+GOAL:
+Support multiple physical/virtual locations inside the single organization:
+intake, scheduling, and access controls can be location-aware.
+
+STATUS: NOT STARTED
+
+---
+
+## VS10 — Capabilities
+
+- Admin portal for locations:
+  - create/edit locations (name, address/notes, active flag)
+  - operating hours can be location-specific (if required)
+- Intake updates:
+  - intake form includes location dropdown (required)
+- Role/location scoping:
+  - managers/tutors can be assigned to one or more locations (multi-select)
+  - scheduling views filter by location
+
+---
+
+## VS10 — Constraints
+
+- Still single-org (not multi-tenant orgs)
+- Schema changes must include RLS (default deny; least privilege)
+- No data leakage across customers; location adds another scoping dimension
+
+---
+
+## VS10 — Exit Criteria
+
+- Location-aware scheduling and intake works end-to-end
+- Role assignments by location are enforceable via RLS
+- E2E covers at least 2 locations with correct isolation
+
+============================================================
+VERTICAL SLICE 11 — Public Marketing Site (No Public Onboarding)
+===============================================================
+
+GOAL:
+Add public pages for marketing and basic info, without enabling self-serve account creation.
+
+STATUS: NOT STARTED
+
+---
+
+## VS11 — Pages
+
+- Home
+- About Us
+- Structure / Curriculum
+- Donation (links to external provider if needed; no app-stored card data)
+- Sign in
+
+---
+
+## VS11 — Constraints
+
+- No public self-serve onboarding (accounts still created via manager invite)
+- Keep app area behind auth; public pages are read-only
+
+---
+
+## VS11 — Exit Criteria
+
+- Public pages render unauthenticated
+- Authenticated app routes remain protected and role-guarded
+
+============================================================
+VERTICAL SLICE 12 — Customer “Request Access” (Public Page → Manager Invite)
+==========================================================================
+
+GOAL:
+Let prospective customers submit a registration request without creating an account.
+Managers review requests and invite customers using the existing manager-invite flow.
+
+STATUS: NOT STARTED
+
+---
+
+## VS12 — Capabilities
+
+- Public page: “Request access” (no auth) to submit:
+  - parent name
+  - email
+  - student name(s)
+  - grade(s) / subjects
+  - location (from locations list, once VS10 exists)
+  - scheduling constraints + notes
+- Manager view:
+  - inbox/table of requests (new → reviewed → invited → closed)
+  - one-click “Invite customer” action (creates invite, marks request as invited)
+  - audit trail (who reviewed/invited, timestamps)
+
+---
+
+## VS12 — Constraints
+
+- Must not create a customer account automatically (still manager-invites-only)
+- Abuse protection for public form (rate limit + basic bot mitigation)
+- All request data stored in Postgres with RLS (default deny; manager-only read)
+
+---
+
+## VS12 — Exit Criteria
+
+- Requests reliably captured and visible to managers
+- Invites issued only by managers
+- E2E test covers request submit → manager invite flow
+
+============================================================
+VERTICAL SLICE 13 — Stripe Payment Links (Session Packs) [BLOCKED BY SPEC]
+=======================================================================
+
+GOAL:
+Enable selling prepaid session packs via Stripe payment links with adjustable quantities,
+and reconcile payments back to membership hours.
+
+STATUS: BLOCKED (SPEC.md says “No payments”)
+
+---
+
+## VS13 — Pre-Work (Unblock)
+
+- Update SPEC.md Non-Goals to allow payments via Stripe (define scope explicitly)
+- Decide whether donations share the same Stripe account/workflow or remain external-only
+- Define how payment quantity maps to membership hours (e.g., 1 qty = N hours)
+
+---
+
+## VS13 — Capabilities (If Unblocked)
+
+- Manager can generate a Stripe payment link for a customer:
+  - adjustable quantity for session packs
+  - metadata to map payment back to customer/student/location
+- Webhook sync (verified + idempotent):
+  - payment succeeded → credit membership hours
+  - payment refunded/failed → adjust membership hours accordingly (audit trail)
+- Customer sees:
+  - link to pay
+  - read-only payment status + resulting membership hours (no card details stored)
+
+---
+
+## VS13 — Constraints
+
+- Stripe-hosted checkout only; no card data stored in app
+- Webhooks must be verified and idempotent
+- RLS for all billing data (manager read/write; customer read-only for their own)
+
+---
+
+## VS13 — Exit Criteria
+
+- Stripe events reliably reconcile to membership hours
+- No double-application of credits/adjustments (idempotent)
+- No payment info leakage
+- All tests green
+
+============================================================
 VERTICAL SLICE 7 — AI-Assisted Drafts (Human Approval)
 ======================================================
 
@@ -207,108 +473,6 @@ STATUS: NOT STARTED
 - Drafts are useful but controlled
 - No autonomous actions
 - Clear auditability
-
-============================================================
-POST-VS7 — Decisions Needed
-===========================
-
-The following roadmap items depend on product direction changes vs current constraints in SPEC.md
-and this file’s GLOBAL CONSTRAINTS (no payments; manager invites only).
-
-- Do we want to allow payments (Stripe) in-app, or keep billing fully manual/off-platform?
-- Do we want any public entry point, or keep the app fully invite-only with no public pages?
-
-============================================================
-VERTICAL SLICE 8 — Customer “Request Access” (Public Page → Manager Invite)
-==========================================================================
-
-GOAL:
-Let prospective customers submit a registration request without creating an account.
-Managers review requests and invite customers using the existing manager-invite flow.
-
-STATUS: NOT STARTED
-
----
-
-## VS8 — Capabilities
-
-- Public page: “Request access” (no auth) to submit:
-  - parent name
-  - email
-  - student name(s)
-  - grade(s) / subjects
-  - scheduling constraints + notes
-- Manager view:
-  - inbox/table of requests (new → reviewed → invited → closed)
-  - one-click “Invite customer” action (creates invite, marks request as invited)
-  - audit trail (who reviewed/invited, timestamps)
-
----
-
-## VS8 — Constraints
-
-- Must not create a customer account automatically (still manager-invites-only)
-- Abuse protection for public form (rate limit + basic bot mitigation)
-- All request data stored in Postgres with RLS (default deny; manager-only read)
-
----
-
-## VS8 — Exit Criteria
-
-- Requests reliably captured and visible to managers
-- Invites issued only by managers
-- No cross-tenant leakage (single-org, but still strict customer isolation)
-- E2E test covers request submit → manager invite flow
-
-============================================================
-VERTICAL SLICE 9 — Stripe Integration (Billing) [BLOCKED BY SPEC]
-===============================================================
-
-GOAL:
-Add Stripe-based billing workflows (invoices/subscriptions) to reduce manual admin effort.
-
-STATUS: BLOCKED (SPEC.md says “No payments”)
-
----
-
-## VS9 — Pre-Work (Unblock)
-
-- Update SPEC.md Non-Goals to explicitly allow the chosen billing scope
-- Update GLOBAL CONSTRAINTS in this file accordingly (define what “payments” means here)
-- Decide billing scope:
-  - Option A: Stripe invoices only (no in-app checkout; manager-triggered invoices)
-  - Option B: Stripe subscriptions (auto-renew; webhook-driven state)
-  - Option C: Hybrid (membership hours + Stripe invoice ledger)
-
----
-
-## VS9 — Capabilities (If Unblocked)
-
-- Manager can link a customer to a Stripe Customer record (store `stripe_customer_id`)
-- Manager can create and send invoices (Stripe-hosted payment page)
-- Webhook sync:
-  - invoice created/sent/paid/voided
-  - subscription status changes (if enabled)
-- App surfaces billing status read-only to customers (no sensitive payment details stored)
-- Membership renewal hooks (if enabled) update membership hours based on paid invoice/subscription period
-
----
-
-## VS9 — Constraints
-
-- No card data stored in app (Stripe-hosted flows only)
-- Webhooks must be verified and idempotent
-- RLS for all billing data (manager read/write; customer read-only for their own)
-- Comprehensive tests (unit for webhook handlers + Playwright smoke for manager flows)
-
----
-
-## VS9 — Exit Criteria
-
-- Stripe events reliably reconcile to internal billing state
-- No double-application of renewals/adjustments (idempotent)
-- No payment info leakage
-- All tests green
 
 ============================================================
 GENERAL RULES
