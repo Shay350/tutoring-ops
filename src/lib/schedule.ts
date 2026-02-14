@@ -123,6 +123,15 @@ export function parseTimeToMinutes(value: string): number | null {
   return hours * 60 + minutes;
 }
 
+export function formatMinutesToTimeLabel(minutes: number): string {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hours24 = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+  const suffix = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  return `${hours12}:${String(mins).padStart(2, "0")} ${suffix}`;
+}
+
 export function validateTimeRange(start: string, end: string): string | null {
   const startMinutes = parseTimeToMinutes(start);
   const endMinutes = parseTimeToMinutes(end);

@@ -206,6 +206,22 @@ export function CreateSessionForm({
               </select>
             </div>
           </div>
+
+          <div className="flex items-start gap-2 rounded-md border border-border bg-slate-50 p-3 text-sm">
+            <input
+              id="allow_overbook"
+              name="allow_overbook"
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="allow_overbook">Allow scheduling beyond prepaid hours</Label>
+              <p className="text-xs text-muted-foreground">
+                If checked, you can create the session even when upcoming sessions exceed membership hours remaining.
+              </p>
+            </div>
+          </div>
+
           <FormMessage
             message={state.message}
             status={state.status}

@@ -2,16 +2,9 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatDate, formatTimeRange } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import type { OperatingHoursRow } from "@/lib/operating-hours";
+import { normalizeOperatingHours } from "@/lib/operating-hours";
 import {
   addDaysUtc,
   formatDateKey,
@@ -22,7 +15,9 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
+import OperatingHoursForm from "./operating-hours-form";
 import RecurringSessionForm from "./recurring-session-form";
+import WeekCalendar from "./week-calendar";
 
 type SearchParams = { week?: string | string[] };
 
@@ -108,6 +103,15 @@ export default async function ManagerSchedulePage({
   const prevWeek = formatDateKey(addDaysUtc(weekStart, -7));
   const nextWeek = formatDateKey(addDaysUtc(weekStart, 7));
 
+  const { data: operatingHoursData, error: operatingHoursError } = await supabase
+    .from("operating_hours")
+    .select("weekday, is_closed, open_time, close_time")
+    .order("weekday", { ascending: true });
+
+  const operatingHours = normalizeOperatingHours(
+    (operatingHoursData ?? []) as OperatingHoursRow[]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -139,6 +143,15 @@ export default async function ManagerSchedulePage({
         defaultEndDate={weekDates[6]}
       />
 
+      <OperatingHoursForm
+        hours={operatingHours}
+        disabledReason={
+          operatingHoursError
+            ? "Operating hours are not available yet (apply VS8 DB migration to enable editing)."
+            : undefined
+        }
+      />
+
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-900">Week overview</h2>
@@ -147,62 +160,12 @@ export default async function ManagerSchedulePage({
           </Badge>
         </div>
 
-        {weekDates.map((dateKey) => {
-          const rows = sessionsByDate[dateKey] ?? [];
-          return (
-            <Card key={dateKey}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>{formatDate(dateKey)}</CardTitle>
-                <Badge variant="secondary" className="capitalize">
-                  {rows.length} sessions
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Tutor</TableHead>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.length > 0 ? (
-                      rows.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell className="font-medium">
-                            {formatTimeRange(
-                              session.start_time,
-                              session.end_time
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {tutorNames[session.tutor_id ?? ""] ?? "Tutor"}
-                          </TableCell>
-                          <TableCell>
-                            {session.students?.[0]?.full_name ?? "Student"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="capitalize">
-                              {session.status ?? "scheduled"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-sm">
-                          No sessions scheduled.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <WeekCalendar
+          weekDates={weekDates}
+          sessionsByDate={sessionsByDate}
+          tutorNames={tutorNames}
+          operatingHours={operatingHours}
+        />
       </div>
     </div>
   );

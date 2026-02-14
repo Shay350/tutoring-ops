@@ -12,6 +12,7 @@ import type { SessionTimeSlot } from "@/lib/schedule";
 import {
   expandWeeklyRecurrence,
   normalizeWeekdays,
+  formatDateKey,
   parseDateKey,
   validateTimeRange,
   findOverlap,
@@ -40,6 +41,7 @@ export async function createRecurringSessions(
   const endTime = String(formData.get("end_time") ?? "").trim();
   const status = String(formData.get("status") ?? "scheduled").trim();
   const weekdaysRaw = formData.getAll("weekdays").map((value) => String(value));
+  const allowOverbook = Boolean(formData.get("allow_overbook"));
 
   if (!studentId || !tutorId) {
     return toActionError("Select a valid assignment.");
@@ -126,6 +128,41 @@ export async function createRecurringSessions(
   }
 
   const recurrenceRule = `weekly:${weekdays.join(",")}`;
+
+  const todayKey = formatDateKey(new Date());
+  const incomingUpcomingCount = sessionDates.filter((dateKey) => dateKey >= todayKey).length;
+
+  if (incomingUpcomingCount > 0 && !allowOverbook) {
+    const [{ data: membership }, { data: existingUpcomingSessions }] =
+      await Promise.all([
+        context.supabase
+          .from("memberships")
+          .select("hours_remaining")
+          .eq("student_id", studentId)
+          .maybeSingle(),
+        context.supabase
+          .from("sessions")
+          .select("id")
+          .eq("student_id", studentId)
+          .eq("status", "scheduled")
+          .gte("session_date", todayKey),
+      ]);
+
+    const hoursRemaining = membership?.hours_remaining;
+    const remaining = Number.isFinite(hoursRemaining ?? NaN)
+      ? Number(hoursRemaining)
+      : null;
+
+    if (remaining !== null) {
+      const reserved = (existingUpcomingSessions ?? []).length;
+      const projected = reserved + incomingUpcomingCount;
+      if (projected > remaining) {
+        return toActionError(
+          `Upcoming sessions (${projected}) exceed membership hours remaining (${remaining}). Check “Allow scheduling beyond prepaid hours” to override.`
+        );
+      }
+    }
+  }
 
   const payload = [];
   for (const date of sessionDates) {

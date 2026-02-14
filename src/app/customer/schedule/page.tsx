@@ -18,12 +18,61 @@ export default async function CustomerSchedulePage() {
 
   const { data: sessions } = await supabase
     .from("sessions")
-    .select("id, session_date, start_time, end_time, status, students(id, full_name)")
+    .select(
+      "id, student_id, session_date, start_time, end_time, status, students(id, full_name)"
+    )
     .gte("session_date", todayKey)
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
 
   const sessionRows = sessions ?? [];
+
+  const studentIds = Array.from(
+    new Set(
+      sessionRows
+        .map((session) => session.student_id)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const { data: memberships } = studentIds.length
+    ? await supabase
+        .from("memberships")
+        .select("student_id, hours_remaining")
+        .in("student_id", studentIds)
+    : { data: [] };
+
+  const hoursRemainingByStudent = (memberships ?? []).reduce<Record<string, number>>(
+    (acc, row) => {
+      const remaining = Number(row.hours_remaining);
+      if (row.student_id && Number.isFinite(remaining)) {
+        acc[row.student_id] = Math.max(0, Math.floor(remaining));
+      }
+      return acc;
+    },
+    {}
+  );
+
+  const shownCountByStudent: Record<string, number> = {};
+  const visibleSessions = sessionRows.filter((session) => {
+    const studentId = session.student_id;
+    if (!studentId) {
+      return true;
+    }
+
+    const limit = hoursRemainingByStudent[studentId];
+    if (limit === undefined) {
+      return true;
+    }
+
+    const current = shownCountByStudent[studentId] ?? 0;
+    if (current >= limit) {
+      return false;
+    }
+
+    shownCountByStudent[studentId] = current + 1;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -49,8 +98,8 @@ export default async function CustomerSchedulePage() {
               </TableRow>
             </TableHeader>
             <TableBody data-testid="upcoming-sessions">
-              {sessionRows.length > 0 ? (
-                sessionRows.map((session) => (
+              {visibleSessions.length > 0 ? (
+                visibleSessions.map((session) => (
                   <TableRow key={session.id} data-testid="upcoming-session-row">
                     <TableCell className="font-medium">
                       {formatDate(session.session_date)}
