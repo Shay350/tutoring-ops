@@ -25,6 +25,10 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const supabase = await createClient();
   const searchQuery = String(resolvedSearchParams?.q ?? "").trim();
+  const searchFilter = searchQuery
+    ? `student_name.ilike.%${searchQuery}%,student_grade.ilike.%${searchQuery}%`
+    : null;
+
   let intakeQuery = supabase
     .from("intakes")
     .select(
@@ -32,13 +36,33 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
     )
     .order("created_at", { ascending: false });
 
-  if (searchQuery) {
-    intakeQuery = intakeQuery.or(
-      `student_name.ilike.%${searchQuery}%,student_grade.ilike.%${searchQuery}%`
-    );
+  if (searchFilter) {
+    intakeQuery = intakeQuery.or(searchFilter);
   }
 
-  const { data: intakes } = await intakeQuery;
+  const { data: intakesWithShortCode, error: intakeError } = await intakeQuery;
+
+  const shouldFallbackWithoutShortCode = Boolean(
+    intakeError && /short_code/i.test(intakeError.message)
+  );
+
+  const intakesWithoutShortCode = shouldFallbackWithoutShortCode
+    ? await (searchFilter
+        ? supabase
+            .from("intakes")
+            .select("id, student_name, student_grade, status, subjects, created_at")
+            .or(searchFilter)
+            .order("created_at", { ascending: false })
+        : supabase
+            .from("intakes")
+            .select("id, student_name, student_grade, status, subjects, created_at")
+            .order("created_at", { ascending: false }))
+    : null;
+
+  const intakes =
+    intakesWithShortCode ??
+    intakesWithoutShortCode?.data?.map((row) => ({ ...row, short_code: null })) ??
+    [];
 
   return (
     <div className="space-y-6">
