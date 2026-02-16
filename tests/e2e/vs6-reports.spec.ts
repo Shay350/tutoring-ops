@@ -58,17 +58,15 @@ async function assignTutor(page: Page) {
 }
 
 async function createSession(page: Page): Promise<string> {
-  const optionValue = await page
-    .getByTestId("session-block-select")
-    .locator("option")
-    .nth(1)
-    .getAttribute("value");
-  if (!optionValue) {
-    throw new Error("No available session block to assign.");
+  const firstDay = page.getByTestId("session-day-option").first();
+  await expect(firstDay).toBeVisible();
+  const sessionDate = (await firstDay.getAttribute("data-date-key")) ?? "";
+  if (!sessionDate) {
+    throw new Error("No available session day to assign.");
   }
 
-  const [sessionDate] = optionValue.split("|");
-  await page.getByTestId("session-block-select").selectOption({ value: optionValue });
+  await firstDay.click();
+  await page.getByTestId("session-slot-option").first().click();
   await page.getByTestId("repeat-weekly").uncheck();
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();

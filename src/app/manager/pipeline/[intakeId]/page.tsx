@@ -179,7 +179,11 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     return acc;
   }, {});
 
-  const availableSessionBlocks: Array<{ value: string; label: string }> = [];
+  const availableSessionDays: Array<{
+    dateKey: string;
+    label: string;
+    slots: Array<{ value: string; label: string }>;
+  }> = [];
   const defaultRepeatUntil = formatDateKey(addDaysUtc(new Date(), 56));
 
   if (student && assignment?.tutor_id) {
@@ -223,11 +227,14 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       const mins = minutes % 60;
       return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
     };
-    const formatWeekday = (dateKey: string) => {
+    const formatDayLabel = (dateKey: string) => {
       const date = new Date(`${dateKey}T00:00:00Z`);
-      return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
+      return new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(date);
     };
-    const seenBlockKeys = new Set<string>();
 
     for (let offset = 0; offset < 14; offset += 1) {
       const date = addDaysUtc(todayUtc, offset);
@@ -244,6 +251,8 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
       const existingRanges = sessionsByDateForTutor[dateKey] ?? [];
 
+      const daySlots: Array<{ value: string; label: string }> = [];
+
       for (let start = openMinutes; start + 60 <= closeMinutes; start += 60) {
         const end = start + 60;
         const overlaps = existingRanges.some((range) =>
@@ -255,16 +264,18 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
         const startTime = toTimeInput(start);
         const endTime = toTimeInput(end);
-        const blockKey = `${weekday}|${startTime}|${endTime}`;
 
-        if (seenBlockKeys.has(blockKey)) {
-          continue;
-        }
-        seenBlockKeys.add(blockKey);
-
-        availableSessionBlocks.push({
+        daySlots.push({
           value: `${dateKey}|${startTime}|${endTime}`,
-          label: `${formatWeekday(dateKey)} • ${formatTimeRange(startTime, endTime)}`,
+          label: formatTimeRange(startTime, endTime),
+        });
+      }
+
+      if (daySlots.length > 0) {
+        availableSessionDays.push({
+          dateKey,
+          label: formatDayLabel(dateKey),
+          slots: daySlots,
         });
       }
     }
@@ -439,7 +450,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             intakeId={intake.id}
             studentId={student.id}
             tutorId={assignment.tutor_id ?? ""}
-            availableSessionBlocks={availableSessionBlocks}
+            availableSessionDays={availableSessionDays}
             defaultRepeatUntil={defaultRepeatUntil}
             action={createSession}
           />

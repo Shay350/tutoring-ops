@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useFormState } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -136,19 +137,39 @@ export function CreateSessionForm({
   intakeId,
   studentId,
   tutorId,
-  availableSessionBlocks,
+  availableSessionDays,
   defaultRepeatUntil,
   action,
 }: {
   intakeId: string;
   studentId: string;
   tutorId: string;
-  availableSessionBlocks: Array<{ value: string; label: string }>;
+  availableSessionDays: Array<{
+    dateKey: string;
+    label: string;
+    slots: Array<{ value: string; label: string }>;
+  }>;
   defaultRepeatUntil: string;
   action: ActionHandler;
 }) {
   const [state, formAction] = useFormState(action, initialActionState);
-  const hasAvailableBlocks = availableSessionBlocks.length > 0;
+  const hasAvailableDays = availableSessionDays.length > 0;
+  const [selectedDayKey, setSelectedDayKey] = useState(
+    availableSessionDays[0]?.dateKey ?? ""
+  );
+  const selectedDay = useMemo(
+    () => availableSessionDays.find((day) => day.dateKey === selectedDayKey) ?? null,
+    [availableSessionDays, selectedDayKey]
+  );
+  const [selectedBlock, setSelectedBlock] = useState(
+    selectedDay?.slots[0]?.value ?? ""
+  );
+  const activeDay =
+    selectedDay ??
+    (hasAvailableDays ? availableSessionDays[0] : null);
+  const activeBlock = activeDay?.slots.some((slot) => slot.value === selectedBlock)
+    ? selectedBlock
+    : (activeDay?.slots[0]?.value ?? "");
 
   return (
     <Card>
@@ -165,27 +186,71 @@ export function CreateSessionForm({
           <input type="hidden" name="tutor_id" value={tutorId} />
           <input type="hidden" name="intake_id" value={intakeId} />
           <input type="hidden" name="status" value="scheduled" />
+          <input
+            type="hidden"
+            name="session_block"
+            value={activeBlock}
+            data-testid="session-block-value"
+          />
           <div className="space-y-2">
-            <Label htmlFor="session_block">Available blocks</Label>
-            <select
-              id="session_block"
-              name="session_block"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              required
-              data-testid="session-block-select"
-              disabled={!hasAvailableBlocks}
-            >
-              <option value="">
-                {hasAvailableBlocks
-                  ? "Select an available session block"
-                  : "No available blocks in the next 2 weeks"}
-              </option>
-              {availableSessionBlocks.map((block) => (
-                <option key={block.value} value={block.value}>
-                  {block.label}
-                </option>
-              ))}
-            </select>
+            <Label>Available blocks</Label>
+            {hasAvailableDays ? (
+              <div className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[220px,1fr]">
+                <div className="space-y-2 border-b border-border pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Days
+                  </p>
+                  <div className="grid gap-2">
+                    {availableSessionDays.map((day) => (
+                      <button
+                        key={day.dateKey}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDayKey(day.dateKey);
+                          setSelectedBlock(day.slots[0]?.value ?? "");
+                        }}
+                        className={`rounded-md border px-3 py-2 text-left text-sm ${
+                          day.dateKey === (activeDay?.dateKey ?? "")
+                            ? "border-sky-600 bg-sky-50 text-sky-900"
+                            : "border-border bg-white text-slate-900 hover:bg-slate-50"
+                        }`}
+                        data-testid="session-day-option"
+                        data-date-key={day.dateKey}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Time slots
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(activeDay?.slots ?? []).map((slot) => (
+                      <button
+                        key={slot.value}
+                        type="button"
+                        onClick={() => setSelectedBlock(slot.value)}
+                        className={`rounded-md border px-3 py-2 text-left text-sm ${
+                          slot.value === activeBlock
+                            ? "border-sky-600 bg-sky-50 text-sky-900"
+                            : "border-border bg-white text-slate-900 hover:bg-slate-50"
+                        }`}
+                        data-testid="session-slot-option"
+                      >
+                        {slot.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
+                No available blocks in the next 2 weeks.
+              </p>
+            )}
           </div>
 
           <div className="flex items-start gap-2 rounded-md border border-border bg-slate-50 p-3 text-sm">
@@ -239,7 +304,7 @@ export function CreateSessionForm({
           <Button
             type="submit"
             data-testid="session-submit"
-            disabled={!hasAvailableBlocks}
+            disabled={!hasAvailableDays || !activeBlock}
           >
             Assign session
           </Button>

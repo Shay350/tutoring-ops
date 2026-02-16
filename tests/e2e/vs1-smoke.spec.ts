@@ -54,14 +54,12 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     await page.getByTestId("assign-submit").click();
     await expect(page.getByTestId("assign-success")).toBeVisible();
 
-    const selectedBlock = await page
-      .getByTestId("session-block-select")
-      .locator("option")
-      .nth(1)
-      .getAttribute("value");
-    expect(selectedBlock).toBeTruthy();
-    const selectedDate = selectedBlock?.split("|")[0] ?? "";
-    await page.getByTestId("session-block-select").selectOption({ index: 1 });
+    const firstDay = page.getByTestId("session-day-option").first();
+    await expect(firstDay).toBeVisible();
+    const selectedDate = (await firstDay.getAttribute("data-date-key")) ?? "";
+    expect(selectedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await firstDay.click();
+    await page.getByTestId("session-slot-option").first().click();
     await page.getByTestId("repeat-weekly").uncheck();
     await page.getByTestId("session-submit").click();
     await expect(page.getByTestId("session-created")).toBeVisible();
