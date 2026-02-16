@@ -69,6 +69,7 @@ async function createSession(page: Page): Promise<string> {
 
   const [sessionDate] = optionValue.split("|");
   await page.getByTestId("session-block-select").selectOption({ value: optionValue });
+  await page.getByTestId("repeat-weekly").uncheck();
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();
   return sessionDate;

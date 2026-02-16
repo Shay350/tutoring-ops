@@ -62,6 +62,7 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     expect(selectedBlock).toBeTruthy();
     const selectedDate = selectedBlock?.split("|")[0] ?? "";
     await page.getByTestId("session-block-select").selectOption({ index: 1 });
+    await page.getByTestId("repeat-weekly").uncheck();
     await page.getByTestId("session-submit").click();
     await expect(page.getByTestId("session-created")).toBeVisible();
 

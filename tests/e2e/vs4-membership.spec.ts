@@ -56,6 +56,7 @@ async function assignTutor(page: Page) {
 
 async function createSession(page: Page) {
   await page.getByTestId("session-block-select").selectOption({ index: 1 });
+  await page.getByTestId("repeat-weekly").uncheck();
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();
 }

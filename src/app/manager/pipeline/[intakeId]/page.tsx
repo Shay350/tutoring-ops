@@ -180,6 +180,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   }, {});
 
   const availableSessionBlocks: Array<{ value: string; label: string }> = [];
+  const defaultRepeatUntil = formatDateKey(addDaysUtc(new Date(), 56));
 
   if (student && assignment?.tutor_id) {
     const now = new Date();
@@ -222,6 +223,11 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       const mins = minutes % 60;
       return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
     };
+    const formatWeekday = (dateKey: string) => {
+      const date = new Date(`${dateKey}T00:00:00Z`);
+      return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
+    };
+    const seenBlockKeys = new Set<string>();
 
     for (let offset = 0; offset < 14; offset += 1) {
       const date = addDaysUtc(todayUtc, offset);
@@ -249,10 +255,16 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
         const startTime = toTimeInput(start);
         const endTime = toTimeInput(end);
+        const blockKey = `${weekday}|${startTime}|${endTime}`;
+
+        if (seenBlockKeys.has(blockKey)) {
+          continue;
+        }
+        seenBlockKeys.add(blockKey);
 
         availableSessionBlocks.push({
           value: `${dateKey}|${startTime}|${endTime}`,
-          label: `${formatDate(dateKey)} • ${formatTimeRange(startTime, endTime)}`,
+          label: `${formatWeekday(dateKey)} • ${formatTimeRange(startTime, endTime)}`,
         });
       }
     }
@@ -428,6 +440,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             studentId={student.id}
             tutorId={assignment.tutor_id ?? ""}
             availableSessionBlocks={availableSessionBlocks}
+            defaultRepeatUntil={defaultRepeatUntil}
             action={createSession}
           />
         </>

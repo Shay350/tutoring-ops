@@ -137,12 +137,14 @@ export function CreateSessionForm({
   studentId,
   tutorId,
   availableSessionBlocks,
+  defaultRepeatUntil,
   action,
 }: {
   intakeId: string;
   studentId: string;
   tutorId: string;
   availableSessionBlocks: Array<{ value: string; label: string }>;
+  defaultRepeatUntil: string;
   action: ActionHandler;
 }) {
   const [state, formAction] = useFormState(action, initialActionState);
@@ -198,6 +200,34 @@ export function CreateSessionForm({
               <p className="text-xs text-muted-foreground">
                 If checked, you can assign this block even when upcoming sessions exceed membership hours remaining.
               </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-md border border-border bg-slate-50 p-3 text-sm">
+            <input
+              id="repeat_weekly"
+              name="repeat_weekly"
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+              defaultChecked
+              data-testid="repeat-weekly"
+            />
+            <div className="w-full space-y-2">
+              <Label htmlFor="repeat_weekly">Repeat weekly</Label>
+              <p className="text-xs text-muted-foreground">
+                Checked by default. Uncheck for a one-time assignment.
+              </p>
+              <div className="space-y-1">
+                <Label htmlFor="repeat_until">Repeat until</Label>
+                <input
+                  id="repeat_until"
+                  name="repeat_until"
+                  type="date"
+                  defaultValue={defaultRepeatUntil}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  data-testid="repeat-until"
+                />
+              </div>
             </div>
           </div>
 

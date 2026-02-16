@@ -15,7 +15,13 @@ import {
 } from "@/lib/operating-hours";
 import { computeBillingDecision } from "@/lib/membership";
 import type { SessionTimeSlot } from "@/lib/schedule";
-import { findOverlap, formatDateKey, validateTimeRange } from "@/lib/schedule";
+import {
+  addDaysUtc,
+  findOverlap,
+  formatDateKey,
+  parseDateKey,
+  validateTimeRange,
+} from "@/lib/schedule";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -257,6 +263,8 @@ export async function createSession(
   const status = String(formData.get("status") ?? "scheduled").trim();
   const intakeId = String(formData.get("intake_id") ?? "").trim();
   const allowOverbook = Boolean(formData.get("allow_overbook"));
+  const repeatWeekly = Boolean(formData.get("repeat_weekly"));
+  const repeatUntil = String(formData.get("repeat_until") ?? "").trim();
 
   let sessionDate = inputSessionDate;
   let startTime = inputStartTime;
@@ -298,16 +306,52 @@ export async function createSession(
     return toActionError("Unable to validate operating hours for this session.");
   }
 
-  const weekday = weekdayFromDateKey(sessionDate);
-  const operatingHoursRow =
-    weekday === null
-      ? null
-      : ((operatingHoursRows ?? []) as OperatingHoursRow[]).find(
-          (row) => row.weekday === weekday
-        );
+  const sessionDates: string[] = [sessionDate];
+  if (repeatWeekly) {
+    if (!repeatUntil || !/^\d{4}-\d{2}-\d{2}$/.test(repeatUntil)) {
+      return toActionError("Provide a valid repeat-until date.");
+    }
 
-  if (!isTimeRangeWithinOperatingHours(operatingHoursRow, startTime, endTime)) {
-    return toActionError("Session time is outside operating hours.");
+    if (status !== "scheduled") {
+      return toActionError("Weekly repeat assignments must use scheduled status.");
+    }
+
+    const parsedStart = parseDateKey(sessionDate);
+    const parsedRepeatUntil = parseDateKey(repeatUntil);
+    if (!parsedStart || !parsedRepeatUntil) {
+      return toActionError("Provide valid repeat dates.");
+    }
+    if (parsedRepeatUntil.getTime() < parsedStart.getTime()) {
+      return toActionError("Repeat-until date must be on or after session date.");
+    }
+
+    const generatedDates: string[] = [];
+    for (
+      let current = parsedStart;
+      current.getTime() <= parsedRepeatUntil.getTime();
+      current = addDaysUtc(current, 7)
+    ) {
+      generatedDates.push(formatDateKey(current));
+    }
+
+    sessionDates.splice(0, sessionDates.length, ...generatedDates);
+  }
+
+  const outsideOperatingHoursDate = sessionDates.find((dateKey) => {
+    const weekday = weekdayFromDateKey(dateKey);
+    const operatingHoursRow =
+      weekday === null
+        ? null
+        : ((operatingHoursRows ?? []) as OperatingHoursRow[]).find(
+            (row) => row.weekday === weekday
+          );
+    return !isTimeRangeWithinOperatingHours(operatingHoursRow, startTime, endTime);
+  });
+
+  if (outsideOperatingHoursDate) {
+    return toActionError(
+      `Session time is outside operating hours on ${outsideOperatingHoursDate}.`
+    );
   }
 
   const { data: assignment, error: assignmentError } = await context.supabase
@@ -331,19 +375,24 @@ export async function createSession(
     .select("session_date, start_time, end_time")
     .eq("tutor_id", tutorId)
     .neq("status", "canceled")
-    .eq("session_date", sessionDate);
+    .gte("session_date", sessionDates[0])
+    .lte("session_date", sessionDates[sessionDates.length - 1]);
 
   if (existingError) {
     return toActionError("Unable to verify tutor availability.");
   }
 
-  const overlapMessage = findOverlap(existingSessions ?? [], [
-    {
-      session_date: sessionDate,
-      start_time: startTime,
-      end_time: endTime,
-    } satisfies SessionTimeSlot,
-  ]);
+  const overlapMessage = findOverlap(
+    existingSessions ?? [],
+    sessionDates.map(
+      (dateKey) =>
+        ({
+          session_date: dateKey,
+          start_time: startTime,
+          end_time: endTime,
+        }) satisfies SessionTimeSlot
+    )
+  );
 
   if (overlapMessage) {
     return toActionError(overlapMessage);
@@ -351,7 +400,8 @@ export async function createSession(
 
   if (status === "scheduled" && !allowOverbook) {
     const todayKey = formatDateKey(new Date());
-    if (sessionDate >= todayKey) {
+    const upcomingCount = sessionDates.filter((dateKey) => dateKey >= todayKey).length;
+    if (upcomingCount > 0) {
       const [{ data: membership }, { data: existingUpcomingSessions }] =
         await Promise.all([
           context.supabase
@@ -374,7 +424,7 @@ export async function createSession(
 
       if (remaining !== null) {
         const reserved = (existingUpcomingSessions ?? []).length;
-        const projected = reserved + 1;
+        const projected = reserved + upcomingCount;
         if (projected > remaining) {
           return toActionError(
             `Upcoming sessions (${projected}) exceed membership hours remaining (${remaining}). Check “Allow scheduling beyond prepaid hours” to override.`
@@ -384,35 +434,39 @@ export async function createSession(
     }
   }
 
-  const sessionShortCode = await generateUniqueShortCode(
-    context.supabase,
-    "sessions",
-    "SES"
-  );
-
-  const { data: sessionRow, error } = await context.supabase
-    .from("sessions")
-    .insert({
+  const payload = [];
+  for (const dateKey of sessionDates) {
+    const sessionShortCode = await generateUniqueShortCode(
+      context.supabase,
+      "sessions",
+      "SES"
+    );
+    payload.push({
       student_id: studentId,
       tutor_id: tutorId,
       created_by: context.user.id,
       status: status || "scheduled",
-      session_date: sessionDate,
+      session_date: dateKey,
       start_time: startTime,
       end_time: endTime,
+      recurrence_rule: repeatWeekly ? "weekly:intake-assigned" : null,
       short_code: sessionShortCode,
-    })
-    .select("id, student_id, status, billed_to_membership")
-    .maybeSingle();
+    });
+  }
 
-  if (error || !sessionRow) {
+  const { data: insertedRows, error } = await context.supabase
+    .from("sessions")
+    .insert(payload)
+    .select("id, student_id, status, billed_to_membership");
+
+  if (error || !insertedRows || insertedRows.length === 0) {
     return toActionError("Unable to create session.");
   }
 
-  if (status === "completed") {
+  if (status === "completed" && insertedRows.length === 1) {
     const billingError = await applySessionBilling({
       supabase: context.supabase,
-      session: sessionRow,
+      session: insertedRows[0],
       actorId: context.user.id,
     });
 
@@ -432,7 +486,11 @@ export async function createSession(
     revalidatePath("/tutor/students");
   }
 
-  return toActionSuccess("Session created.");
+  return toActionSuccess(
+    insertedRows.length === 1
+      ? "Session created."
+      : `${insertedRows.length} weekly sessions assigned.`
+  );
 }
 
 export async function completeSession(
