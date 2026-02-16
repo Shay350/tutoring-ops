@@ -58,15 +58,14 @@ async function assignTutor(page: Page) {
 }
 
 async function createSession(page: Page): Promise<string> {
-  const firstDay = page.getByTestId("session-day-option").first();
-  await expect(firstDay).toBeVisible();
-  const sessionDate = (await firstDay.getAttribute("data-date-key")) ?? "";
+  const firstCell = page.getByTestId("assign-slot-cell-available").first();
+  await expect(firstCell).toBeVisible();
+  const sessionDate = (await firstCell.getAttribute("data-date-key")) ?? "";
   if (!sessionDate) {
     throw new Error("No available session day to assign.");
   }
 
-  await firstDay.click();
-  await page.getByTestId("session-slot-option").first().click();
+  await firstCell.click();
   await page.getByTestId("repeat-weekly").uncheck();
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();

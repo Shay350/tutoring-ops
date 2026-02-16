@@ -55,8 +55,7 @@ async function assignTutor(page: Page) {
 }
 
 async function createSession(page: Page) {
-  await page.getByTestId("session-day-option").first().click();
-  await page.getByTestId("session-slot-option").first().click();
+  await page.getByTestId("assign-slot-cell-available").first().click();
   await page.getByTestId("repeat-weekly").uncheck();
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();

@@ -41,9 +41,10 @@ import {
 import {
   ApproveIntakeForm,
   AssignTutorForm,
-  CreateSessionForm,
 } from "../pipeline-forms";
-import WeekCalendar from "../../schedule/week-calendar";
+import AssignSessionScheduler, {
+  type SchedulerSlot,
+} from "../assign-session-scheduler";
 
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
@@ -154,36 +155,12 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
   const scheduleSessionRows = scheduleSessions ?? [];
 
-  const sessionsByDate = scheduleSessionRows.reduce<
-    Record<string, typeof scheduleSessionRows>
-  >((acc, session) => {
-    const key = session.session_date ?? "";
-    if (!key) {
-      return acc;
-    }
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(session);
-    return acc;
-  }, {});
-
   const operatingHours = normalizeOperatingHours(
     (operatingHoursResult.data ?? []) as OperatingHoursRow[]
   );
-  const openOperatingHours = operatingHours.filter((row) => !row.is_closed);
   const operatingHoursByWeekday = mapOperatingHoursByWeekday(operatingHours);
 
-  const tutorNames = tutors.reduce<Record<string, string>>((acc, tutor) => {
-    acc[tutor.id] = tutor.full_name ?? "Tutor";
-    return acc;
-  }, {});
-
-  const availableSessionDays: Array<{
-    dateKey: string;
-    label: string;
-    slots: Array<{ value: string; label: string }>;
-  }> = [];
+  const availableSlotIdSet = new Set<string>();
   const defaultRepeatUntil = formatDateKey(addDaysUtc(new Date(), 56));
 
   if (student && assignment?.tutor_id) {
@@ -227,15 +204,6 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       const mins = minutes % 60;
       return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
     };
-    const formatDayLabel = (dateKey: string) => {
-      const date = new Date(`${dateKey}T00:00:00Z`);
-      return new Intl.DateTimeFormat("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      }).format(date);
-    };
-
     for (let offset = 0; offset < 14; offset += 1) {
       const date = addDaysUtc(todayUtc, offset);
       const dateKey = formatDateKey(date);
@@ -251,8 +219,6 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
       const existingRanges = sessionsByDateForTutor[dateKey] ?? [];
 
-      const daySlots: Array<{ value: string; label: string }> = [];
-
       for (let start = openMinutes; start + 60 <= closeMinutes; start += 60) {
         const end = start + 60;
         const overlaps = existingRanges.some((range) =>
@@ -264,20 +230,84 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
         const startTime = toTimeInput(start);
         const endTime = toTimeInput(end);
-
-        daySlots.push({
-          value: `${dateKey}|${startTime}|${endTime}`,
-          label: formatTimeRange(startTime, endTime),
-        });
+        availableSlotIdSet.add(`${dateKey}|${startTime}|${endTime}`);
       }
+    }
+  }
 
-      if (daySlots.length > 0) {
-        availableSessionDays.push({
-          dateKey,
-          label: formatDayLabel(dateKey),
-          slots: daySlots,
-        });
-      }
+  const slotsByDateAndRange = scheduleSessionRows.reduce<
+    Record<string, Array<{ startMinutes: number; endMinutes: number }>>
+  >((acc, session) => {
+    if (!session.session_date || !session.start_time || !session.end_time) {
+      return acc;
+    }
+    const startMinutes = parseTimeToMinutes(session.start_time);
+    const endMinutes = parseTimeToMinutes(session.end_time);
+    if (startMinutes === null || endMinutes === null) {
+      return acc;
+    }
+    if (!acc[session.session_date]) {
+      acc[session.session_date] = [];
+    }
+    acc[session.session_date].push({ startMinutes, endMinutes });
+    return acc;
+  }, {});
+
+  const hoursWindows = weekDates.map((dateKey) => {
+    const weekday = new Date(`${dateKey}T00:00:00Z`).getUTCDay();
+    const dayHours = operatingHoursByWeekday[weekday];
+    const window = dayHours
+      ? operatingHoursWindowMinutes(dayHours)
+      : { openMinutes: null, closeMinutes: null };
+    return { dateKey, ...window };
+  });
+  const openMinutesAll = hoursWindows
+    .map((window) => window.openMinutes)
+    .filter((value): value is number => value !== null);
+  const closeMinutesAll = hoursWindows
+    .map((window) => window.closeMinutes)
+    .filter((value): value is number => value !== null);
+  const gridStartMinutes = openMinutesAll.length ? Math.min(...openMinutesAll) : 9 * 60;
+  const gridEndMinutes = closeMinutesAll.length ? Math.max(...closeMinutesAll) : 17 * 60;
+
+  const toTimeInput = (minutes: number) =>
+    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+  const schedulerSlots: SchedulerSlot[] = [];
+  const capacityPerSlot = Math.max(tutors.length, 1);
+
+  for (const dateKey of weekDates) {
+    const weekday = new Date(`${dateKey}T00:00:00Z`).getUTCDay();
+    const dayHours = operatingHoursByWeekday[weekday];
+    const { openMinutes, closeMinutes } = dayHours
+      ? operatingHoursWindowMinutes(dayHours)
+      : { openMinutes: null, closeMinutes: null };
+
+    for (let start = gridStartMinutes; start + 60 <= gridEndMinutes; start += 60) {
+      const end = start + 60;
+      const slotId = `${dateKey}|${toTimeInput(start)}|${toTimeInput(end)}`;
+      const isOpenWindow =
+        openMinutes !== null &&
+        closeMinutes !== null &&
+        start >= openMinutes &&
+        end <= closeMinutes;
+      const activeCount = (slotsByDateAndRange[dateKey] ?? []).filter((range) =>
+        timeRangesOverlap(start, end, range.startMinutes, range.endMinutes)
+      ).length;
+      const openCount = isOpenWindow
+        ? Math.max(capacityPerSlot - activeCount, 0)
+        : 0;
+
+      schedulerSlots.push({
+        slotId,
+        dateKey,
+        startTime: toTimeInput(start),
+        endTime: toTimeInput(end),
+        startMinutes: start,
+        openCount,
+        isOpenWindow,
+        isSelectable: availableSlotIdSet.has(slotId) && openCount > 0,
+      });
     }
   }
 
@@ -361,52 +391,27 @@ export default async function IntakeDetailPage({ params }: PageProps) {
           </Link>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-3" data-testid="intake-operating-hours">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Active operating hours
-            </h3>
-            {operatingHoursResult.error ? (
-              <p className="text-sm text-muted-foreground">
-                Operating hours are unavailable. Apply the VS8 operating-hours
-                migration to enable this view.
-              </p>
-            ) : openOperatingHours.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Open</TableHead>
-                    <TableHead>Close</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {openOperatingHours.map((row) => (
-                    <TableRow key={row.weekday}>
-                      <TableCell className="font-medium">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                          row.weekday
-                        ] ?? `Day ${row.weekday}`}
-                      </TableCell>
-                      <TableCell>{row.open_time?.slice(0, 5) ?? "—"}</TableCell>
-                      <TableCell>{row.close_time?.slice(0, 5) ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No open operating-hour windows configured.
-              </p>
-            )}
-          </div>
-
-          <WeekCalendar
-            weekDates={weekDates}
-            sessionsByDate={sessionsByDate}
-            tutorNames={tutorNames}
-            operatingHours={operatingHours}
-            capacityPerSlot={Math.max(tutors.length, 1)}
-          />
+          {student && assignment ? (
+            <AssignSessionScheduler
+              intakeId={intake.id}
+              studentId={student.id}
+              tutorId={assignment.tutor_id ?? ""}
+              weekDates={weekDates}
+              slots={schedulerSlots}
+              operatingHours={operatingHours}
+              operatingHoursUnavailableReason={
+                operatingHoursResult.error
+                  ? "Operating hours are unavailable. Apply the VS8 operating-hours migration to enable this view."
+                  : undefined
+              }
+              defaultRepeatUntil={defaultRepeatUntil}
+              action={createSession}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Approve intake and assign tutor to schedule sessions from the calendar grid.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -446,14 +451,6 @@ export default async function IntakeDetailPage({ params }: PageProps) {
               <p>You can now schedule sessions.</p>
             </CardContent>
           </Card>
-          <CreateSessionForm
-            intakeId={intake.id}
-            studentId={student.id}
-            tutorId={assignment.tutor_id ?? ""}
-            availableSessionDays={availableSessionDays}
-            defaultRepeatUntil={defaultRepeatUntil}
-            action={createSession}
-          />
         </>
       ) : student ? (
         tutors.length > 0 ? (

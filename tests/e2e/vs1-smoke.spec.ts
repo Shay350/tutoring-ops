@@ -54,12 +54,11 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     await page.getByTestId("assign-submit").click();
     await expect(page.getByTestId("assign-success")).toBeVisible();
 
-    const firstDay = page.getByTestId("session-day-option").first();
-    await expect(firstDay).toBeVisible();
-    const selectedDate = (await firstDay.getAttribute("data-date-key")) ?? "";
+    const firstAvailableCell = page.getByTestId("assign-slot-cell-available").first();
+    await expect(firstAvailableCell).toBeVisible();
+    const selectedDate = (await firstAvailableCell.getAttribute("data-date-key")) ?? "";
     expect(selectedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    await firstDay.click();
-    await page.getByTestId("session-slot-option").first().click();
+    await firstAvailableCell.click();
     await page.getByTestId("repeat-weekly").uncheck();
     await page.getByTestId("session-submit").click();
     await expect(page.getByTestId("session-created")).toBeVisible();

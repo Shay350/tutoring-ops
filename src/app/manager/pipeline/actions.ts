@@ -288,6 +288,10 @@ export async function createSession(
     return toActionError("Student and tutor are required.");
   }
 
+  if (!sessionBlock && (!sessionDate || !startTime || !endTime)) {
+    return toActionError("Select an available session slot from the calendar.");
+  }
+
   if (!sessionDate || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
     return toActionError("Provide a valid session date.");
   }

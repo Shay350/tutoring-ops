@@ -85,14 +85,33 @@ test.describe("@smoke VS8 schedule UX", () => {
     await expect(page.getByTestId("recurring-success")).toContainText("Created");
   });
 
-  test("intake review shows schedule and operating hours context", async ({ page }) => {
+  test("intake scheduler uses interactive calendar selection", async ({ page }) => {
     await login(page, "manager");
-    await page.goto(`${baseUrl}/manager/pipeline/INT-1003`);
+    await page.goto(`${baseUrl}/manager/pipeline/INT-1001`);
 
     await expect(page.getByTestId("intake-schedule-context")).toBeVisible();
-    await expect(page.getByTestId("intake-operating-hours")).toContainText(
-      "Active operating hours"
-    );
-    await expect(page.getByTestId("week-calendar")).toBeVisible();
+    await expect(page.getByTestId("operating-hours-collapsible")).toBeVisible();
+    await expect(page.getByTestId("assign-scheduler-grid")).toBeVisible();
+
+    await expect(page.getByTestId("assignment-panel")).toHaveCount(0);
+    await expect(page.getByTestId("session-submit")).toHaveCount(0);
+
+    const disabledCell = page.getByTestId("assign-slot-cell-disabled").first();
+    await expect(disabledCell).toBeVisible();
+    await disabledCell.click({ force: true });
+    await expect(page.getByTestId("assignment-panel")).toHaveCount(0);
+
+    const availableCell = page.getByTestId("assign-slot-cell-available").first();
+    await availableCell.click();
+
+    const panel = page.getByTestId("assignment-panel");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("assignment-summary")).toContainText(/\(.+ open\)/i);
+
+    const repeatWeekly = page.getByTestId("repeat-weekly");
+    const repeatUntil = page.getByTestId("repeat-until");
+    await expect(repeatUntil).toBeEnabled();
+    await repeatWeekly.uncheck();
+    await expect(repeatUntil).toBeDisabled();
   });
 });
