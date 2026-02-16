@@ -16,6 +16,9 @@ import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
 import {
+  buildSchedulerSlots,
+} from "@/lib/intake-scheduler";
+import {
   mapOperatingHoursByWeekday,
   operatingHoursWindowMinutes,
   type OperatingHoursRow,
@@ -42,9 +45,7 @@ import {
   ApproveIntakeForm,
   AssignTutorForm,
 } from "../pipeline-forms";
-import AssignSessionScheduler, {
-  type SchedulerSlot,
-} from "../assign-session-scheduler";
+import AssignSessionScheduler from "../assign-session-scheduler";
 
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
@@ -270,46 +271,27 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const gridStartMinutes = openMinutesAll.length ? Math.min(...openMinutesAll) : 9 * 60;
   const gridEndMinutes = closeMinutesAll.length ? Math.max(...closeMinutesAll) : 17 * 60;
 
-  const toTimeInput = (minutes: number) =>
-    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-
-  const schedulerSlots: SchedulerSlot[] = [];
   const capacityPerSlot = Math.max(tutors.length, 1);
-
-  for (const dateKey of weekDates) {
+  const openWindowByDate = weekDates.reduce<
+    Record<string, { openMinutes: number | null; closeMinutes: number | null }>
+  >((acc, dateKey) => {
     const weekday = new Date(`${dateKey}T00:00:00Z`).getUTCDay();
     const dayHours = operatingHoursByWeekday[weekday];
-    const { openMinutes, closeMinutes } = dayHours
+    acc[dateKey] = dayHours
       ? operatingHoursWindowMinutes(dayHours)
       : { openMinutes: null, closeMinutes: null };
+    return acc;
+  }, {});
 
-    for (let start = gridStartMinutes; start + 60 <= gridEndMinutes; start += 60) {
-      const end = start + 60;
-      const slotId = `${dateKey}|${toTimeInput(start)}|${toTimeInput(end)}`;
-      const isOpenWindow =
-        openMinutes !== null &&
-        closeMinutes !== null &&
-        start >= openMinutes &&
-        end <= closeMinutes;
-      const activeCount = (slotsByDateAndRange[dateKey] ?? []).filter((range) =>
-        timeRangesOverlap(start, end, range.startMinutes, range.endMinutes)
-      ).length;
-      const openCount = isOpenWindow
-        ? Math.max(capacityPerSlot - activeCount, 0)
-        : 0;
-
-      schedulerSlots.push({
-        slotId,
-        dateKey,
-        startTime: toTimeInput(start),
-        endTime: toTimeInput(end),
-        startMinutes: start,
-        openCount,
-        isOpenWindow,
-        isSelectable: availableSlotIdSet.has(slotId) && openCount > 0,
-      });
-    }
-  }
+  const schedulerSlots = buildSchedulerSlots({
+    weekDates,
+    gridStartMinutes,
+    gridEndMinutes,
+    openWindowByDate,
+    busyRangesByDate: slotsByDateAndRange,
+    capacityPerSlot,
+    availableSlotIdSet,
+  });
 
   return (
     <div className="space-y-6">

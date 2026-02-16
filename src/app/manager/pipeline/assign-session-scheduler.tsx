@@ -17,6 +17,7 @@ import {
 import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatTimeRange } from "@/lib/format";
+import type { SchedulerSlot } from "@/lib/intake-scheduler";
 import type { OperatingHoursRow } from "@/lib/operating-hours";
 import { formatMinutesToTimeLabel } from "@/lib/schedule";
 
@@ -24,17 +25,6 @@ type ActionHandler = (
   prevState: ActionState,
   formData: FormData
 ) => Promise<ActionState>;
-
-export type SchedulerSlot = {
-  slotId: string;
-  dateKey: string;
-  startTime: string;
-  endTime: string;
-  startMinutes: number;
-  openCount: number;
-  isSelectable: boolean;
-  isOpenWindow: boolean;
-};
 
 function FormMessage({
   message,
