@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { normalizeShortCode } from "@/lib/ids";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -102,7 +103,10 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
             <TableBody>
               {intakes && intakes.length > 0 ? (
                 intakes.map((intake) => {
-                  const intakeCode = intake.short_code ?? intake.id;
+                  const intakeCode =
+                    intake.short_code && intake.short_code.trim().length > 0
+                      ? normalizeShortCode(intake.short_code)
+                      : intake.id;
 
                   return (
                   <TableRow key={intake.id} data-testid="intake-row">

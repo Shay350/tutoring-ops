@@ -31,7 +31,7 @@ import {
 } from "../pipeline-forms";
 
 type PageProps = {
-  params: { intakeId: string };
+  params: { intakeId: string } | Promise<{ intakeId: string }>;
 };
 
 async function handleCompleteSession(formData: FormData) {
@@ -40,8 +40,9 @@ async function handleCompleteSession(formData: FormData) {
 }
 
 export default async function IntakeDetailPage({ params }: PageProps) {
+  const resolvedParams = await Promise.resolve(params);
   const supabase = await createClient();
-  const intakeId = params.intakeId;
+  const intakeId = resolvedParams.intakeId;
   const isIntakeUuid = isUuid(intakeId);
   const intakeLookup = supabase
     .from("intakes")
@@ -50,22 +51,33 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     );
 
   const intakeLookupRaw = String(intakeId ?? "").trim();
-  const intakeLookupNormalized = normalizeShortCode(intakeLookupRaw);
+  const intakeLookupNormalized = normalizeShortCode(intakeLookupRaw).replace(
+    /[^A-Z0-9-]/g,
+    ""
+  );
+
+  const intakeShortCodeCandidates = isIntakeUuid
+    ? []
+    : Array.from(
+        new Set(
+          [
+            intakeLookupNormalized,
+            intakeLookupNormalized.replace(/(MANAGER|TUTOR|CUSTOMER)$/i, ""),
+          ].filter((candidate) => candidate.length > 0)
+        )
+      );
 
   const intakeResult = isIntakeUuid
     ? await intakeLookup.eq("id", intakeLookupRaw).maybeSingle()
-    : await intakeLookup.eq("short_code", intakeLookupRaw).maybeSingle();
+    : intakeShortCodeCandidates.length === 1
+      ? await intakeLookup
+          .eq("short_code", intakeShortCodeCandidates[0])
+          .maybeSingle()
+      : await intakeLookup
+          .in("short_code", intakeShortCodeCandidates)
+          .maybeSingle();
 
-  const intakeFallbackResult =
-    !isIntakeUuid &&
-    !intakeResult.data &&
-    intakeLookupRaw &&
-    intakeLookupNormalized &&
-    intakeLookupRaw !== intakeLookupNormalized
-      ? await intakeLookup.eq("short_code", intakeLookupNormalized).maybeSingle()
-      : null;
-
-  const intake = intakeResult.data ?? intakeFallbackResult?.data ?? null;
+  const intake = intakeResult.data ?? null;
 
   if (!intake) {
     notFound();
