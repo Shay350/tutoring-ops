@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
-import { isUuid, normalizeShortCode } from "@/lib/ids";
+import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -51,21 +51,9 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     );
 
   const intakeLookupRaw = String(intakeId ?? "").trim();
-  const intakeLookupNormalized = normalizeShortCode(intakeLookupRaw).replace(
-    /[^A-Z0-9-]/g,
-    ""
-  );
-
   const intakeShortCodeCandidates = isIntakeUuid
     ? []
-    : Array.from(
-        new Set(
-          [
-            intakeLookupNormalized,
-            intakeLookupNormalized.replace(/(MANAGER|TUTOR|CUSTOMER)$/i, ""),
-          ].filter((candidate) => candidate.length > 0)
-        )
-      );
+    : deriveShortCodeCandidates(intakeLookupRaw);
 
   const intakeResult = isIntakeUuid
     ? await intakeLookup.eq("id", intakeLookupRaw).maybeSingle()

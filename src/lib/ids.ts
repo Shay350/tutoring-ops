@@ -10,3 +10,20 @@ export function isUuid(value?: string | null): boolean {
 export function normalizeShortCode(value?: string | null): string {
   return (value ?? "").trim().toUpperCase();
 }
+
+export function deriveShortCodeCandidates(value?: string | null): string[] {
+  const normalized = normalizeShortCode(value).replace(/[^A-Z0-9-]/g, "");
+  if (!normalized) {
+    return [];
+  }
+
+  const withoutRoleSuffix = normalized.replace(/(MANAGER|TUTOR|CUSTOMER)$/, "");
+
+  return Array.from(
+    new Set(
+      [normalized, withoutRoleSuffix].filter(
+        (candidate) => candidate.length > 0
+      )
+    )
+  );
+}
