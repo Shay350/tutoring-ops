@@ -33,6 +33,9 @@ export default async function TutorSchedulePage({
   searchParams,
 }: PageProps) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const weekParam = Array.isArray(resolvedSearchParams?.week)
@@ -42,15 +45,24 @@ export default async function TutorSchedulePage({
   const weekStart = getWeekStart(anchorDate ?? new Date());
   const weekDates = getWeekDates(weekStart);
 
-  const { data: sessions } = await supabase
+  const { data: sessions } = user
+    ? await supabase
     .from("sessions")
     .select(
-      "id, short_code, session_date, start_time, end_time, status, students(id, full_name), session_logs(id)"
+      "id, short_code, session_date, start_time, end_time, status, tutor_id, students(id, full_name), session_logs(id)"
     )
+    .eq("status", "scheduled")
+    .eq("tutor_id", user.id)
     .gte("session_date", weekDates[0])
     .lte("session_date", weekDates[6])
     .order("session_date", { ascending: true })
-    .order("start_time", { ascending: true, nullsFirst: true });
+    .order("start_time", { ascending: true, nullsFirst: true })
+    : { data: [] };
+
+  const { data: tutorProfile } = user
+    ? await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const tutorDisplayName = tutorProfile?.full_name ?? "You";
 
   const sessionRows = sessions ?? [];
   const sessionsByDate = sessionRows.reduce<
@@ -119,6 +131,7 @@ export default async function TutorSchedulePage({
                     <TableRow>
                       <TableHead>Time</TableHead>
                       <TableHead>Student</TableHead>
+                      <TableHead>Tutor</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Log</TableHead>
                     </TableRow>
@@ -151,6 +164,9 @@ export default async function TutorSchedulePage({
                               </Link>
                             </TableCell>
                             <TableCell>
+                              {tutorDisplayName}
+                            </TableCell>
+                            <TableCell>
                               <Badge variant="secondary" className="capitalize">
                                 {session.status ?? "scheduled"}
                               </Badge>
@@ -171,7 +187,7 @@ export default async function TutorSchedulePage({
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-sm">
+                        <TableCell colSpan={5} className="text-center text-sm">
                           No sessions scheduled yet.
                         </TableCell>
                       </TableRow>

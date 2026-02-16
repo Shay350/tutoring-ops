@@ -25,11 +25,13 @@ export default function WeekCalendar({
   sessionsByDate,
   tutorNames,
   operatingHours,
+  capacityPerSlot,
 }: {
   weekDates: string[];
   sessionsByDate: Record<string, SessionRow[]>;
   tutorNames: Record<string, string>;
   operatingHours: OperatingHoursRow[];
+  capacityPerSlot: number;
 }) {
   const hoursByWeekday = operatingHours.reduce<Record<number, OperatingHoursRow>>(
     (acc, row) => {
@@ -96,6 +98,38 @@ export default function WeekCalendar({
     return acc;
   }, {});
 
+  const bookedSlotsByDate = weekDates.reduce<Record<string, number>>((acc, dateKey) => {
+    const weekday = weekdayForDate(dateKey);
+    const dayHours = hoursByWeekday[weekday];
+    const { openMinutes, closeMinutes } = dayHours
+      ? operatingHoursWindowMinutes(dayHours)
+      : { openMinutes: null, closeMinutes: null };
+
+    if (openMinutes === null || closeMinutes === null) {
+      acc[dateKey] = 0;
+      return acc;
+    }
+
+    const sessions = sessionsByDate[dateKey] ?? [];
+    const occupied = new Set<number>();
+
+    for (const session of sessions) {
+      if (session.status === "canceled" || !session.start_time) {
+        continue;
+      }
+      const sessionStart = parseTimeToMinutes(session.start_time);
+      if (sessionStart === null || sessionStart < openMinutes || sessionStart >= closeMinutes) {
+        continue;
+      }
+      const slot =
+        Math.floor((sessionStart - startMinutes) / slotSize) * slotSize + startMinutes;
+      occupied.add(slot);
+    }
+
+    acc[dateKey] = occupied.size;
+    return acc;
+  }, {});
+
   return (
     <Card>
       <CardHeader>
@@ -115,7 +149,36 @@ export default function WeekCalendar({
               key={dateKey}
               className="border-b border-border bg-background p-3 text-sm font-medium text-slate-900"
             >
-              {formatDate(dateKey)}
+              <div>{formatDate(dateKey)}</div>
+              {(() => {
+                const weekday = weekdayForDate(dateKey);
+                const dayHours = hoursByWeekday[weekday];
+                const { openMinutes, closeMinutes } = dayHours
+                  ? operatingHoursWindowMinutes(dayHours)
+                  : { openMinutes: null, closeMinutes: null };
+
+                if (openMinutes === null || closeMinutes === null) {
+                  return (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Closed
+                    </p>
+                  );
+                }
+
+                const dailySlotCount = Math.max(
+                  Math.floor((closeMinutes - openMinutes) / slotSize),
+                  0
+                );
+                const dailyCapacity = dailySlotCount * Math.max(capacityPerSlot, 1);
+                const booked = bookedSlotsByDate[dateKey] ?? 0;
+                const remaining = Math.max(dailySlotCount - booked, 0);
+
+                return (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {`Open ${formatMinutesToTimeLabel(openMinutes)}-${formatMinutesToTimeLabel(closeMinutes)} · ${remaining}/${dailySlotCount} slots left · ${dailyCapacity} total tutor-slots/day`}
+                  </p>
+                );
+              })()}
             </div>
           ))}
 
@@ -139,6 +202,13 @@ export default function WeekCalendar({
 
                 const sessionsAtSlot =
                   sessionsByDateAndSlot[dateKey]?.[slotMinutes] ?? [];
+                const activeSessionsAtSlot = sessionsAtSlot.filter(
+                  (session) => session.status !== "canceled"
+                );
+                const remainingCapacity = Math.max(
+                  Math.max(capacityPerSlot, 1) - activeSessionsAtSlot.length,
+                  0
+                );
 
                 return (
                   <div
@@ -148,6 +218,15 @@ export default function WeekCalendar({
                       isOpen ? "bg-white" : "bg-slate-50"
                     )}
                   >
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge variant="secondary" className="h-5 px-2 text-[11px]">
+                        {!isOpen
+                          ? "Unavailable"
+                          : remainingCapacity === 0
+                            ? "Full"
+                            : `${remainingCapacity} open`}
+                      </Badge>
+                    </div>
                     {sessionsAtSlot.length > 0 ? (
                       <div className="space-y-2">
                         {sessionsAtSlot.map((session) => {

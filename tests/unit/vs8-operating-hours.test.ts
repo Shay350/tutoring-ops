@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isTimeRangeWithinOperatingHours,
+  mapOperatingHoursByWeekday,
   normalizeOperatingHours,
   operatingHoursWindowMinutes,
+  weekdayFromDateKey,
 } from "../../src/lib/operating-hours";
 import { formatMinutesToTimeLabel } from "../../src/lib/schedule";
 
@@ -68,3 +71,31 @@ describe("formatMinutesToTimeLabel", () => {
   });
 });
 
+describe("VS8 schedule helpers", () => {
+  it("maps operating hours by weekday", () => {
+    const map = mapOperatingHoursByWeekday(
+      normalizeOperatingHours([
+        { weekday: 1, is_closed: false, open_time: "10:00", close_time: "18:00" },
+      ])
+    );
+    expect(map[1]?.open_time).toBe("10:00");
+    expect(map[0]?.is_closed).toBe(true);
+  });
+
+  it("validates time ranges against operating hours", () => {
+    const monday = {
+      weekday: 1,
+      is_closed: false,
+      open_time: "09:00",
+      close_time: "17:00",
+    };
+    expect(isTimeRangeWithinOperatingHours(monday, "09:00", "10:00")).toBe(true);
+    expect(isTimeRangeWithinOperatingHours(monday, "08:30", "10:00")).toBe(false);
+    expect(isTimeRangeWithinOperatingHours(monday, "16:30", "17:30")).toBe(false);
+  });
+
+  it("derives weekday from date key", () => {
+    expect(weekdayFromDateKey("2026-02-16")).toBe(1);
+    expect(weekdayFromDateKey("invalid")).toBe(null);
+  });
+});

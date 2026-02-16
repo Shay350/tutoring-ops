@@ -102,6 +102,7 @@ export default async function ManagerSchedulePage({
 
   const prevWeek = formatDateKey(addDaysUtc(weekStart, -7));
   const nextWeek = formatDateKey(addDaysUtc(weekStart, 7));
+  const capacityPerSlot = Math.max(Object.keys(tutorNames).length, 1);
 
   const { data: operatingHoursData, error: operatingHoursError } = await supabase
     .from("operating_hours")
@@ -165,6 +166,7 @@ export default async function ManagerSchedulePage({
           sessionsByDate={sessionsByDate}
           tutorNames={tutorNames}
           operatingHours={operatingHours}
+          capacityPerSlot={capacityPerSlot}
         />
       </div>
     </div>

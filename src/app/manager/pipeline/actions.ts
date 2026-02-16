@@ -8,6 +8,11 @@ import {
   toActionSuccess,
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
+import {
+  isTimeRangeWithinOperatingHours,
+  type OperatingHoursRow,
+  weekdayFromDateKey,
+} from "@/lib/operating-hours";
 import { computeBillingDecision } from "@/lib/membership";
 import type { SessionTimeSlot } from "@/lib/schedule";
 import { findOverlap, formatDateKey, validateTimeRange } from "@/lib/schedule";
@@ -263,6 +268,27 @@ export async function createSession(
   const timeError = validateTimeRange(startTime, endTime);
   if (timeError) {
     return toActionError(timeError);
+  }
+
+  const { data: operatingHoursRows, error: operatingHoursError } =
+    await context.supabase
+      .from("operating_hours")
+      .select("weekday, is_closed, open_time, close_time");
+
+  if (operatingHoursError) {
+    return toActionError("Unable to validate operating hours for this session.");
+  }
+
+  const weekday = weekdayFromDateKey(sessionDate);
+  const operatingHoursRow =
+    weekday === null
+      ? null
+      : ((operatingHoursRows ?? []) as OperatingHoursRow[]).find(
+          (row) => row.weekday === weekday
+        );
+
+  if (!isTimeRangeWithinOperatingHours(operatingHoursRow, startTime, endTime)) {
+    return toActionError("Session time is outside operating hours.");
   }
 
   const { data: assignment, error: assignmentError } = await context.supabase

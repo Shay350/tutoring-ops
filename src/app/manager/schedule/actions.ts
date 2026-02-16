@@ -17,6 +17,12 @@ import {
   validateTimeRange,
   findOverlap,
 } from "@/lib/schedule";
+import {
+  isTimeRangeWithinOperatingHours,
+  mapOperatingHoursByWeekday,
+  type OperatingHoursRow,
+  weekdayFromDateKey,
+} from "@/lib/operating-hours";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 
 function parseAssignmentPair(pair: string): { studentId: string; tutorId: string } {
@@ -128,6 +134,37 @@ export async function createRecurringSessions(
   }
 
   const recurrenceRule = `weekly:${weekdays.join(",")}`;
+
+  const { data: operatingHoursRows, error: operatingHoursError } =
+    await context.supabase
+      .from("operating_hours")
+      .select("weekday, is_closed, open_time, close_time");
+
+  if (operatingHoursError) {
+    return toActionError("Unable to validate operating hours for this schedule.");
+  }
+
+  const operatingHoursByWeekday = mapOperatingHoursByWeekday(
+    (operatingHoursRows ?? []) as OperatingHoursRow[]
+  );
+
+  const outsideHoursDate = sessionDates.find((dateKey) => {
+    const weekday = weekdayFromDateKey(dateKey);
+    if (weekday === null) {
+      return true;
+    }
+    return !isTimeRangeWithinOperatingHours(
+      operatingHoursByWeekday[weekday],
+      startTime,
+      endTime
+    );
+  });
+
+  if (outsideHoursDate) {
+    return toActionError(
+      `Selected time is outside operating hours on ${outsideHoursDate}.`
+    );
+  }
 
   const todayKey = formatDateKey(new Date());
   const incomingUpcomingCount = sessionDates.filter((dateKey) => dateKey >= todayKey).length;

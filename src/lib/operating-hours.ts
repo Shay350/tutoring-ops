@@ -1,4 +1,4 @@
-import { parseTimeToMinutes } from "./schedule";
+import { parseDateKey, parseTimeToMinutes } from "./schedule";
 
 export type OperatingHoursRow = {
   weekday: number;
@@ -62,4 +62,41 @@ export function operatingHoursWindowMinutes(row: OperatingHoursRow): {
   }
 
   return { openMinutes, closeMinutes };
+}
+
+export function mapOperatingHoursByWeekday(
+  rows: OperatingHoursRow[]
+): Record<number, OperatingHoursRow> {
+  return rows.reduce<Record<number, OperatingHoursRow>>((acc, row) => {
+    acc[row.weekday] = row;
+    return acc;
+  }, {});
+}
+
+export function isTimeRangeWithinOperatingHours(
+  row: OperatingHoursRow | null | undefined,
+  startTime: string,
+  endTime: string
+): boolean {
+  if (!row) {
+    return false;
+  }
+
+  const { openMinutes, closeMinutes } = operatingHoursWindowMinutes(row);
+  if (openMinutes === null || closeMinutes === null) {
+    return false;
+  }
+
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = parseTimeToMinutes(endTime);
+  if (startMinutes === null || endMinutes === null) {
+    return false;
+  }
+
+  return startMinutes >= openMinutes && endMinutes <= closeMinutes;
+}
+
+export function weekdayFromDateKey(dateKey: string): number | null {
+  const date = parseDateKey(dateKey);
+  return date ? date.getUTCDay() : null;
 }
