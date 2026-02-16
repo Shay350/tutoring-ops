@@ -15,6 +15,11 @@ import {
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
+import {
+  type OperatingHoursRow,
+  normalizeOperatingHours,
+} from "@/lib/operating-hours";
+import { getWeekDates, getWeekStart } from "@/lib/schedule";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +34,7 @@ import {
   AssignTutorForm,
   CreateSessionForm,
 } from "../pipeline-forms";
+import WeekCalendar from "../../schedule/week-calendar";
 
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
@@ -77,6 +83,18 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     .eq("intake_id", intake.id)
     .maybeSingle();
 
+  const [tutorsResult, operatingHoursResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("role", "tutor")
+      .order("full_name", { ascending: true }),
+    supabase
+      .from("operating_hours")
+      .select("weekday, is_closed, open_time, close_time")
+      .order("weekday", { ascending: true }),
+  ]);
+
   let assignment:
     | { id: string; tutor_id: string | null; status: string | null }
     | null = null;
@@ -88,10 +106,10 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     status: string | null;
     billed_to_membership: boolean | null;
   }> = [];
-  let tutors: Array<{ id: string; full_name: string | null }> = [];
+  const tutors = tutorsResult.data ?? [];
 
   if (student) {
-    const [assignmentResult, sessionsResult, tutorsResult] = await Promise.all([
+    const [assignmentResult, sessionsResult] = await Promise.all([
       supabase
         .from("assignments")
         .select("id, tutor_id, status")
@@ -105,17 +123,51 @@ export default async function IntakeDetailPage({ params }: PageProps) {
         )
         .eq("student_id", student.id)
         .order("session_date", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("role", "tutor")
-        .order("full_name", { ascending: true }),
     ]);
 
     assignment = assignmentResult.data ?? null;
     sessions = sessionsResult.data ?? [];
-    tutors = tutorsResult.data ?? [];
   }
+
+  const weekStart = getWeekStart(new Date());
+  const weekDates = getWeekDates(weekStart);
+
+  const { data: scheduleSessions } = await supabase
+    .from("sessions")
+    .select(
+      "id, session_date, start_time, end_time, status, tutor_id, students(id, full_name)"
+    )
+    .eq("status", "scheduled")
+    .gte("session_date", weekDates[0])
+    .lte("session_date", weekDates[6])
+    .order("session_date", { ascending: true })
+    .order("start_time", { ascending: true, nullsFirst: true });
+
+  const scheduleSessionRows = scheduleSessions ?? [];
+
+  const sessionsByDate = scheduleSessionRows.reduce<
+    Record<string, typeof scheduleSessionRows>
+  >((acc, session) => {
+    const key = session.session_date ?? "";
+    if (!key) {
+      return acc;
+    }
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(session);
+    return acc;
+  }, {});
+
+  const operatingHours = normalizeOperatingHours(
+    (operatingHoursResult.data ?? []) as OperatingHoursRow[]
+  );
+  const openOperatingHours = operatingHours.filter((row) => !row.is_closed);
+
+  const tutorNames = tutors.reduce<Record<string, string>>((acc, tutor) => {
+    acc[tutor.id] = tutor.full_name ?? "Tutor";
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -177,6 +229,72 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             <p className="text-xs text-muted-foreground">Goals</p>
             <p className="text-sm text-slate-700">{intake.goals}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="intake-schedule-context">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>Schedule context for assignment</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Review this week&apos;s active schedule and operating hours before
+              assigning a tutor block.
+            </p>
+          </div>
+          <Link
+            href="/manager/schedule"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Open master schedule
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3" data-testid="intake-operating-hours">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Active operating hours
+            </h3>
+            {operatingHoursResult.error ? (
+              <p className="text-sm text-muted-foreground">
+                Operating hours are unavailable. Apply the VS8 operating-hours
+                migration to enable this view.
+              </p>
+            ) : openOperatingHours.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Day</TableHead>
+                    <TableHead>Open</TableHead>
+                    <TableHead>Close</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {openOperatingHours.map((row) => (
+                    <TableRow key={row.weekday}>
+                      <TableCell className="font-medium">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                          row.weekday
+                        ] ?? `Day ${row.weekday}`}
+                      </TableCell>
+                      <TableCell>{row.open_time?.slice(0, 5) ?? "—"}</TableCell>
+                      <TableCell>{row.close_time?.slice(0, 5) ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No open operating-hour windows configured.
+              </p>
+            )}
+          </div>
+
+          <WeekCalendar
+            weekDates={weekDates}
+            sessionsByDate={sessionsByDate}
+            tutorNames={tutorNames}
+            operatingHours={operatingHours}
+            capacityPerSlot={Math.max(tutors.length, 1)}
+          />
         </CardContent>
       </Card>
 

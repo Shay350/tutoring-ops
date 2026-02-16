@@ -84,4 +84,15 @@ test.describe("@smoke VS8 schedule UX", () => {
     await page.getByTestId("recurring-submit").click();
     await expect(page.getByTestId("recurring-success")).toContainText("Created");
   });
+
+  test("intake review shows schedule and operating hours context", async ({ page }) => {
+    await login(page, "manager");
+    await page.goto(`${baseUrl}/manager/pipeline/INT-1003`);
+
+    await expect(page.getByTestId("intake-schedule-context")).toBeVisible();
+    await expect(page.getByTestId("intake-operating-hours")).toContainText(
+      "Active operating hours"
+    );
+    await expect(page.getByTestId("week-calendar")).toBeVisible();
+  });
 });
