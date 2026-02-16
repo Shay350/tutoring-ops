@@ -4,7 +4,6 @@ import { useFormState } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
@@ -137,19 +136,22 @@ export function CreateSessionForm({
   intakeId,
   studentId,
   tutorId,
+  availableSessionBlocks,
   action,
 }: {
   intakeId: string;
   studentId: string;
   tutorId: string;
+  availableSessionBlocks: Array<{ value: string; label: string }>;
   action: ActionHandler;
 }) {
   const [state, formAction] = useFormState(action, initialActionState);
+  const hasAvailableBlocks = availableSessionBlocks.length > 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create session</CardTitle>
+        <CardTitle>Assign session</CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -160,51 +162,28 @@ export function CreateSessionForm({
           <input type="hidden" name="student_id" value={studentId} />
           <input type="hidden" name="tutor_id" value={tutorId} />
           <input type="hidden" name="intake_id" value={intakeId} />
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="session_date">Session date</Label>
-              <Input
-                id="session_date"
-                name="session_date"
-                type="date"
-                required
-                data-testid="session-date"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="start_time">Start time</Label>
-              <Input
-                id="start_time"
-                name="start_time"
-                type="time"
-                required
-                data-testid="session-start-time"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end_time">End time</Label>
-              <Input
-                id="end_time"
-                name="end_time"
-                type="time"
-                required
-                data-testid="session-end-time"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                name="status"
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue="scheduled"
-                data-testid="create-session-status"
-              >
-                <option value="scheduled">Scheduled</option>
-                <option value="completed">Completed</option>
-                <option value="canceled">Canceled</option>
-              </select>
-            </div>
+          <input type="hidden" name="status" value="scheduled" />
+          <div className="space-y-2">
+            <Label htmlFor="session_block">Available blocks</Label>
+            <select
+              id="session_block"
+              name="session_block"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              required
+              data-testid="session-block-select"
+              disabled={!hasAvailableBlocks}
+            >
+              <option value="">
+                {hasAvailableBlocks
+                  ? "Select an available session block"
+                  : "No available blocks in the next 2 weeks"}
+              </option>
+              {availableSessionBlocks.map((block) => (
+                <option key={block.value} value={block.value}>
+                  {block.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-start gap-2 rounded-md border border-border bg-slate-50 p-3 text-sm">
@@ -217,7 +196,7 @@ export function CreateSessionForm({
             <div className="space-y-1">
               <Label htmlFor="allow_overbook">Allow scheduling beyond prepaid hours</Label>
               <p className="text-xs text-muted-foreground">
-                If checked, you can create the session even when upcoming sessions exceed membership hours remaining.
+                If checked, you can assign this block even when upcoming sessions exceed membership hours remaining.
               </p>
             </div>
           </div>
@@ -227,8 +206,12 @@ export function CreateSessionForm({
             status={state.status}
             successTestId="session-created"
           />
-          <Button type="submit" data-testid="session-submit">
-            Create session
+          <Button
+            type="submit"
+            data-testid="session-submit"
+            disabled={!hasAvailableBlocks}
+          >
+            Assign session
           </Button>
         </form>
       </CardContent>

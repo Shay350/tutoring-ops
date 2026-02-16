@@ -57,12 +57,21 @@ async function assignTutor(page: Page) {
   await expect(page.getByTestId("assign-success")).toBeVisible();
 }
 
-async function createSession(page: Page, sessionDate: string, start: string, end: string) {
-  await page.getByTestId("session-date").fill(sessionDate);
-  await page.getByTestId("session-start-time").fill(start);
-  await page.getByTestId("session-end-time").fill(end);
+async function createSession(page: Page): Promise<string> {
+  const optionValue = await page
+    .getByTestId("session-block-select")
+    .locator("option")
+    .nth(1)
+    .getAttribute("value");
+  if (!optionValue) {
+    throw new Error("No available session block to assign.");
+  }
+
+  const [sessionDate] = optionValue.split("|");
+  await page.getByTestId("session-block-select").selectOption({ value: optionValue });
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();
+  return sessionDate;
 }
 
 async function logSession(page: Page, sessionDate: string, studentName: string) {
@@ -85,8 +94,6 @@ test.describe("@smoke VS6 reports", () => {
   test("manager views monthly summaries and exports CSV", async ({ page }) => {
     const studentName = `QA Reports ${Date.now()}`;
     const month = "2026-02";
-    const sessionDate1 = "2026-02-05";
-    const sessionDate2 = "2026-02-12";
 
     await createStudentIntake(page, studentName);
     await page.context().clearCookies();
@@ -94,8 +101,8 @@ test.describe("@smoke VS6 reports", () => {
     await login(page, "manager");
     await approveIntake(page, studentName);
     await assignTutor(page);
-    await createSession(page, sessionDate1, "15:00", "16:00");
-    await createSession(page, sessionDate2, "15:00", "17:00");
+    const sessionDate1 = await createSession(page);
+    const sessionDate2 = await createSession(page);
 
     await page.context().clearCookies();
 
@@ -115,7 +122,7 @@ test.describe("@smoke VS6 reports", () => {
     });
     const studentCells = studentRow.locator("td");
     await expect(studentCells.nth(1)).toHaveText("2");
-    await expect(studentCells.nth(2)).toHaveText("3");
+    await expect(studentCells.nth(2)).toHaveText("2");
     await expect(studentCells.nth(3)).toHaveText("0");
 
     const tutorTable = page.getByTestId("reports-tutor-table");
@@ -125,7 +132,7 @@ test.describe("@smoke VS6 reports", () => {
     });
     const tutorCells = tutorRow.locator("td");
     await expect(tutorCells.nth(1)).toHaveText("2");
-    await expect(tutorCells.nth(2)).toHaveText("3");
+    await expect(tutorCells.nth(2)).toHaveText("2");
     await expect(tutorCells.nth(3)).toHaveText("1");
 
     const [sessionsResponse] = await Promise.all([

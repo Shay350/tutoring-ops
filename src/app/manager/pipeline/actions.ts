@@ -250,12 +250,31 @@ export async function createSession(
 
   const studentId = String(formData.get("student_id") ?? "").trim();
   const tutorId = String(formData.get("tutor_id") ?? "").trim();
-  const sessionDate = String(formData.get("session_date") ?? "").trim();
-  const startTime = String(formData.get("start_time") ?? "").trim();
-  const endTime = String(formData.get("end_time") ?? "").trim();
+  const sessionBlock = String(formData.get("session_block") ?? "").trim();
+  const inputSessionDate = String(formData.get("session_date") ?? "").trim();
+  const inputStartTime = String(formData.get("start_time") ?? "").trim();
+  const inputEndTime = String(formData.get("end_time") ?? "").trim();
   const status = String(formData.get("status") ?? "scheduled").trim();
   const intakeId = String(formData.get("intake_id") ?? "").trim();
   const allowOverbook = Boolean(formData.get("allow_overbook"));
+
+  let sessionDate = inputSessionDate;
+  let startTime = inputStartTime;
+  let endTime = inputEndTime;
+
+  if (sessionBlock) {
+    const [blockDate, blockStartTime, blockEndTime] = sessionBlock
+      .split("|")
+      .map((part) => part.trim());
+
+    if (!blockDate || !blockStartTime || !blockEndTime) {
+      return toActionError("Select a valid available session block.");
+    }
+
+    sessionDate = blockDate;
+    startTime = blockStartTime;
+    endTime = blockEndTime;
+  }
 
   if (!studentId || !tutorId) {
     return toActionError("Student and tutor are required.");
@@ -311,6 +330,7 @@ export async function createSession(
     .from("sessions")
     .select("session_date, start_time, end_time")
     .eq("tutor_id", tutorId)
+    .neq("status", "canceled")
     .eq("session_date", sessionDate);
 
   if (existingError) {

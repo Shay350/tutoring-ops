@@ -54,9 +54,8 @@ async function assignTutor(page: Page) {
   await expect(page.getByTestId("assign-success")).toBeVisible();
 }
 
-async function createSession(page: Page, sessionDate: string) {
-  await page.getByTestId("create-session").click();
-  await page.getByTestId("session-date").fill(sessionDate);
+async function createSession(page: Page) {
+  await page.getByTestId("session-block-select").selectOption({ index: 1 });
   await page.getByTestId("session-submit").click();
   await expect(page.getByTestId("session-created")).toBeVisible();
 }
@@ -217,7 +216,6 @@ test.describe("@smoke VS4 membership visibility", () => {
 
   test("completing a session decrements hours exactly once", async ({ page }) => {
     const studentName = `QA Billing ${Date.now()}`;
-    const sessionDate = "2026-02-05";
 
     await createStudentIntake(page, studentName);
     await page.context().clearCookies();
@@ -225,7 +223,7 @@ test.describe("@smoke VS4 membership visibility", () => {
     await login(page, "manager");
     await approveIntake(page, studentName);
     await assignTutor(page);
-    await createSession(page, sessionDate);
+    await createSession(page);
     await openStudentMembership(page, studentName);
     await createMembership(page, {
       planType: "monthly",
@@ -240,7 +238,10 @@ test.describe("@smoke VS4 membership visibility", () => {
     const expectedHours = startingHours - 1;
 
     await openIntakeReview(page, studentName);
-    const sessionRow = page.getByRole("row").filter({ hasText: sessionDate });
+    const sessionRow = page
+      .getByRole("row")
+      .filter({ has: page.locator('[data-testid^="session-complete-"]') })
+      .first();
     const completeButton = sessionRow.locator(
       '[data-testid^="session-complete-"]'
     );

@@ -54,16 +54,20 @@ test.describe("@smoke VS1 intake → assign → session log", () => {
     await page.getByTestId("assign-submit").click();
     await expect(page.getByTestId("assign-success")).toBeVisible();
 
-    await page.getByTestId("create-session").click();
-    await page.getByTestId("session-date").fill("2026-02-05");
-    await page.getByTestId("session-start-time").fill("15:00");
-    await page.getByTestId("session-end-time").fill("16:00");
+    const selectedBlock = await page
+      .getByTestId("session-block-select")
+      .locator("option")
+      .nth(1)
+      .getAttribute("value");
+    expect(selectedBlock).toBeTruthy();
+    const selectedDate = selectedBlock?.split("|")[0] ?? "";
+    await page.getByTestId("session-block-select").selectOption({ index: 1 });
     await page.getByTestId("session-submit").click();
     await expect(page.getByTestId("session-created")).toBeVisible();
 
     await page.context().clearCookies();
     await login(page, "tutor");
-    await page.goto("http://localhost:3000/tutor/schedule?week=2026-02-02");
+    await page.goto(`http://localhost:3000/tutor/schedule?week=${selectedDate}`);
 
     await page.getByTestId("session-row").filter({ hasText: studentName }).click();
     await page.waitForURL("**/tutor/sessions/**/log");

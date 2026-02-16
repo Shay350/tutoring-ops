@@ -16,10 +16,19 @@ import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
 import {
+  mapOperatingHoursByWeekday,
+  operatingHoursWindowMinutes,
   type OperatingHoursRow,
   normalizeOperatingHours,
 } from "@/lib/operating-hours";
-import { getWeekDates, getWeekStart } from "@/lib/schedule";
+import {
+  addDaysUtc,
+  formatDateKey,
+  getWeekDates,
+  getWeekStart,
+  parseTimeToMinutes,
+  timeRangesOverlap,
+} from "@/lib/schedule";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -163,11 +172,91 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     (operatingHoursResult.data ?? []) as OperatingHoursRow[]
   );
   const openOperatingHours = operatingHours.filter((row) => !row.is_closed);
+  const operatingHoursByWeekday = mapOperatingHoursByWeekday(operatingHours);
 
   const tutorNames = tutors.reduce<Record<string, string>>((acc, tutor) => {
     acc[tutor.id] = tutor.full_name ?? "Tutor";
     return acc;
   }, {});
+
+  const availableSessionBlocks: Array<{ value: string; label: string }> = [];
+
+  if (student && assignment?.tutor_id) {
+    const now = new Date();
+    const todayUtc = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+    const windowStart = formatDateKey(todayUtc);
+    const windowEnd = formatDateKey(addDaysUtc(todayUtc, 13));
+
+    const { data: tutorSessionRows } = await supabase
+      .from("sessions")
+      .select("session_date, start_time, end_time, status")
+      .eq("tutor_id", assignment.tutor_id)
+      .neq("status", "canceled")
+      .gte("session_date", windowStart)
+      .lte("session_date", windowEnd);
+
+    const sessionsByDateForTutor = (tutorSessionRows ?? []).reduce<
+      Record<string, Array<{ startMinutes: number; endMinutes: number }>>
+    >((acc, session) => {
+      if (!session.session_date || !session.start_time || !session.end_time) {
+        return acc;
+      }
+
+      const startMinutes = parseTimeToMinutes(session.start_time);
+      const endMinutes = parseTimeToMinutes(session.end_time);
+      if (startMinutes === null || endMinutes === null) {
+        return acc;
+      }
+
+      if (!acc[session.session_date]) {
+        acc[session.session_date] = [];
+      }
+      acc[session.session_date].push({ startMinutes, endMinutes });
+      return acc;
+    }, {});
+
+    const toTimeInput = (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+    };
+
+    for (let offset = 0; offset < 14; offset += 1) {
+      const date = addDaysUtc(todayUtc, offset);
+      const dateKey = formatDateKey(date);
+      const weekday = date.getUTCDay();
+      const dayHours = operatingHoursByWeekday[weekday];
+      const { openMinutes, closeMinutes } = dayHours
+        ? operatingHoursWindowMinutes(dayHours)
+        : { openMinutes: null, closeMinutes: null };
+
+      if (openMinutes === null || closeMinutes === null) {
+        continue;
+      }
+
+      const existingRanges = sessionsByDateForTutor[dateKey] ?? [];
+
+      for (let start = openMinutes; start + 60 <= closeMinutes; start += 60) {
+        const end = start + 60;
+        const overlaps = existingRanges.some((range) =>
+          timeRangesOverlap(start, end, range.startMinutes, range.endMinutes)
+        );
+        if (overlaps) {
+          continue;
+        }
+
+        const startTime = toTimeInput(start);
+        const endTime = toTimeInput(end);
+
+        availableSessionBlocks.push({
+          value: `${dateKey}|${startTime}|${endTime}`,
+          label: `${formatDate(dateKey)} • ${formatTimeRange(startTime, endTime)}`,
+        });
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -338,6 +427,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             intakeId={intake.id}
             studentId={student.id}
             tutorId={assignment.tutor_id ?? ""}
+            availableSessionBlocks={availableSessionBlocks}
             action={createSession}
           />
         </>
