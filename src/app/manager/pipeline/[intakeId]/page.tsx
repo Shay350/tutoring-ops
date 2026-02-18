@@ -50,6 +50,7 @@ import AssignSessionScheduler from "../assign-session-scheduler";
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
 };
+const MAX_STUDENTS_PER_TUTOR_PER_HOUR = 4;
 
 async function handleCompleteSession(formData: FormData) {
   "use server";
@@ -222,10 +223,10 @@ export default async function IntakeDetailPage({ params }: PageProps) {
 
       for (let start = openMinutes; start + 60 <= closeMinutes; start += 60) {
         const end = start + 60;
-        const overlaps = existingRanges.some((range) =>
+        const overlappingCount = existingRanges.filter((range) =>
           timeRangesOverlap(start, end, range.startMinutes, range.endMinutes)
-        );
-        if (overlaps) {
+        ).length;
+        if (overlappingCount >= MAX_STUDENTS_PER_TUTOR_PER_HOUR) {
           continue;
         }
 
@@ -271,7 +272,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const gridStartMinutes = openMinutesAll.length ? Math.min(...openMinutesAll) : 9 * 60;
   const gridEndMinutes = closeMinutesAll.length ? Math.max(...closeMinutesAll) : 17 * 60;
 
-  const capacityPerSlot = Math.max(tutors.length, 1);
+  const capacityPerSlot = MAX_STUDENTS_PER_TUTOR_PER_HOUR;
   const openWindowByDate = weekDates.reduce<
     Record<string, { openMinutes: number | null; closeMinutes: number | null }>
   >((acc, dateKey) => {

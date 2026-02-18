@@ -116,6 +116,38 @@ function ScheduleCalendarGrid({
   selectedSlotId: string | null;
   onSelectSlot: (slot: SchedulerSlot) => void;
 }) {
+  const availabilityTone = (slot: SchedulerSlot | null) => {
+    if (!slot || !slot.isOpenWindow || slot.openCount <= 0) {
+      return {
+        cell: "bg-slate-50 text-muted-foreground",
+        badge: "border-slate-300 bg-slate-100 text-slate-700",
+      };
+    }
+
+    if (slot.openCount >= 4) {
+      return {
+        cell: "bg-sky-200 text-sky-950",
+        badge: "border-sky-400 bg-sky-300 text-sky-950",
+      };
+    }
+    if (slot.openCount === 3) {
+      return {
+        cell: "bg-sky-100 text-sky-900",
+        badge: "border-sky-300 bg-sky-200 text-sky-900",
+      };
+    }
+    if (slot.openCount === 2) {
+      return {
+        cell: "bg-sky-50 text-sky-900",
+        badge: "border-sky-200 bg-sky-100 text-sky-900",
+      };
+    }
+    return {
+      cell: "bg-blue-50 text-blue-900",
+      badge: "border-blue-200 bg-blue-100 text-blue-900",
+    };
+  };
+
   const uniqueStartMinutes = Array.from(new Set(slots.map((slot) => slot.startMinutes))).sort(
     (a, b) => a - b
   );
@@ -160,6 +192,7 @@ function ScheduleCalendarGrid({
                 const slot = slotsByDateAndMinute[dateKey]?.[minute] ?? null;
                 const isSelected = Boolean(slot && slot.slotId === selectedSlotId);
                 const isSelectable = Boolean(slot?.isSelectable);
+                const tone = availabilityTone(slot);
                 const badgeText = slot
                   ? !slot.isOpenWindow
                     ? "Unavailable"
@@ -180,10 +213,10 @@ function ScheduleCalendarGrid({
                     }}
                     className={`min-h-[56px] border-b border-l border-border p-2 text-left ${
                       isSelected
-                        ? "bg-sky-50 ring-2 ring-sky-500 ring-inset"
+                        ? `${tone.cell} ring-2 ring-sky-500 ring-inset`
                         : isSelectable
-                          ? "bg-white hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                          : "bg-slate-50 text-muted-foreground"
+                          ? `${tone.cell} hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500`
+                          : tone.cell
                     }`}
                     aria-pressed={isSelected}
                     aria-label={
@@ -198,7 +231,7 @@ function ScheduleCalendarGrid({
                     data-slot-id={slot?.slotId ?? ""}
                     data-date-key={dateKey}
                   >
-                    <span className="inline-flex rounded-md border border-border bg-white px-2 py-1 text-xs">
+                    <span className={`inline-flex rounded-md border px-2 py-1 text-xs ${tone.badge}`}>
                       {badgeText}
                     </span>
                   </button>

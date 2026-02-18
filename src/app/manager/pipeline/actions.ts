@@ -14,12 +14,11 @@ import {
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
 import { computeBillingDecision } from "@/lib/membership";
-import type { SessionTimeSlot } from "@/lib/schedule";
 import {
   addDaysUtc,
-  findOverlap,
   formatDateKey,
   parseDateKey,
+  parseTimeToMinutes,
   validateTimeRange,
 } from "@/lib/schedule";
 import { generateUniqueShortCode } from "@/lib/short-codes";
@@ -31,6 +30,7 @@ type SessionBillingRow = {
   status: string | null;
   billed_to_membership: boolean | null;
 };
+const MAX_STUDENTS_PER_TUTOR_PER_HOUR = 4;
 
 async function applySessionBilling({
   supabase,
@@ -386,20 +386,48 @@ export async function createSession(
     return toActionError("Unable to verify tutor availability.");
   }
 
-  const overlapMessage = findOverlap(
-    existingSessions ?? [],
-    sessionDates.map(
-      (dateKey) =>
-        ({
-          session_date: dateKey,
-          start_time: startTime,
-          end_time: endTime,
-        }) satisfies SessionTimeSlot
-    )
+  const overlappingCountsByDate = sessionDates.reduce<Record<string, number>>(
+    (acc, dateKey) => {
+      acc[dateKey] = 0;
+      return acc;
+    },
+    {}
   );
 
-  if (overlapMessage) {
-    return toActionError(overlapMessage);
+  const incomingStart = parseTimeToMinutes(startTime);
+  const incomingEnd = parseTimeToMinutes(endTime);
+  if (incomingStart === null || incomingEnd === null) {
+    return toActionError("Provide valid start and end times.");
+  }
+
+  for (const existingSession of existingSessions ?? []) {
+    if (
+      !existingSession.session_date ||
+      !overlappingCountsByDate[existingSession.session_date]
+    ) {
+      continue;
+    }
+
+    const existingStart = parseTimeToMinutes(existingSession.start_time);
+    const existingEnd = parseTimeToMinutes(existingSession.end_time);
+    if (existingStart === null || existingEnd === null) {
+      continue;
+    }
+
+    const overlaps = incomingStart < existingEnd && incomingEnd > existingStart;
+    if (overlaps) {
+      overlappingCountsByDate[existingSession.session_date] += 1;
+    }
+  }
+
+  const saturatedDate = Object.entries(overlappingCountsByDate).find(
+    ([, overlapCount]) => overlapCount >= MAX_STUDENTS_PER_TUTOR_PER_HOUR
+  )?.[0];
+
+  if (saturatedDate) {
+    return toActionError(
+      `Tutor already has ${MAX_STUDENTS_PER_TUTOR_PER_HOUR} students scheduled on ${saturatedDate} for this hour.`
+    );
   }
 
   if (status === "scheduled" && !allowOverbook) {
