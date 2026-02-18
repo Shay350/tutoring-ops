@@ -126,24 +126,24 @@ function ScheduleCalendarGrid({
 
     if (slot.openCount >= 4) {
       return {
-        cell: "bg-sky-200 text-sky-950",
+        cell: "bg-white text-slate-900",
         badge: "border-sky-400 bg-sky-300 text-sky-950",
       };
     }
     if (slot.openCount === 3) {
       return {
-        cell: "bg-sky-100 text-sky-900",
+        cell: "bg-white text-slate-900",
         badge: "border-sky-300 bg-sky-200 text-sky-900",
       };
     }
     if (slot.openCount === 2) {
       return {
-        cell: "bg-sky-50 text-sky-900",
+        cell: "bg-white text-slate-900",
         badge: "border-sky-200 bg-sky-100 text-sky-900",
       };
     }
     return {
-      cell: "bg-blue-50 text-blue-900",
+      cell: "bg-white text-slate-900",
       badge: "border-blue-200 bg-blue-100 text-blue-900",
     };
   };
