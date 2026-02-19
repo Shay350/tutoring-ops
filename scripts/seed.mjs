@@ -408,6 +408,23 @@ async function main() {
   );
   await upsertRows(
     supabase,
+    "operating_hours",
+    await readSeedFile("operating_hours_seed.csv"),
+    "weekday"
+  );
+  await upsertRows(
+    supabase,
+    "message_threads",
+    await readSeedFile("message_threads_seed.csv")
+  );
+  await upsertRows(supabase, "messages", await readSeedFile("messages_seed.csv"));
+  await upsertRows(
+    supabase,
+    "message_read_state",
+    await readSeedFile("message_read_state_seed.csv")
+  );
+  await upsertRows(
+    supabase,
     "message_threads",
     await readSeedFile("message_threads_seed.csv")
   );
