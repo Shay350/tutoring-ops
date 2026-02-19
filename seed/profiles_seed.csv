@@ -1,6 +1,22 @@
 id,email,role,full_name,pending,created_at
 00000000-0000-0000-0000-000000000001,manager@tutorops.local,manager,Morgan Manager,false,2026-02-01T09:00:00Z
+00000000-0000-0000-0000-000000000006,manager2@tutorops.local,manager,Casey Director,false,2026-02-01T09:01:00Z
+00000000-0000-0000-0000-000000000007,manager3@tutorops.local,manager,Alex Operations,false,2026-02-01T09:02:00Z
 00000000-0000-0000-0000-000000000002,tutor1@tutorops.local,tutor,Taylor Tutor,false,2026-02-01T09:05:00Z
 00000000-0000-0000-0000-000000000003,tutor2@tutorops.local,tutor,Riley Tutor,false,2026-02-01T09:06:00Z
-00000000-0000-0000-0000-000000000004,parent1@tutorops.local,customer,Cameron Customer,false,2026-02-01T09:10:00Z
-00000000-0000-0000-0000-000000000005,parent2@tutorops.local,customer,Jordan Customer,false,2026-02-01T09:12:00Z
+00000000-0000-0000-0000-000000000008,tutor3@tutorops.local,tutor,Jamie Tutor,false,2026-02-01T09:07:00Z
+00000000-0000-0000-0000-000000000009,tutor4@tutorops.local,tutor,Drew Tutor,false,2026-02-01T09:08:00Z
+00000000-0000-0000-0000-00000000000a,tutor5@tutorops.local,tutor,Quinn Tutor,false,2026-02-01T09:09:00Z
+00000000-0000-0000-0000-00000000000b,tutor6@tutorops.local,tutor,Ren Tutor,false,2026-02-01T09:10:00Z
+00000000-0000-0000-0000-00000000000c,tutor7@tutorops.local,tutor,Sage Tutor,false,2026-02-01T09:11:00Z
+00000000-0000-0000-0000-00000000000d,tutor8@tutorops.local,tutor,Jordan Tutor,false,2026-02-01T09:12:00Z
+00000000-0000-0000-0000-000000000004,parent1@tutorops.local,customer,Cameron Customer,false,2026-02-01T09:13:00Z
+00000000-0000-0000-0000-000000000005,parent2@tutorops.local,customer,Jordan Customer,false,2026-02-01T09:14:00Z
+00000000-0000-0000-0000-000000000010,parent3@tutorops.local,customer,Avery Customer,false,2026-02-01T09:15:00Z
+00000000-0000-0000-0000-000000000011,parent4@tutorops.local,customer,Blake Customer,false,2026-02-01T09:16:00Z
+00000000-0000-0000-0000-000000000012,parent5@tutorops.local,customer,Casey Customer,false,2026-02-01T09:17:00Z
+00000000-0000-0000-0000-000000000013,parent6@tutorops.local,customer,Drew Customer,false,2026-02-01T09:18:00Z
+00000000-0000-0000-0000-000000000014,parent7@tutorops.local,customer,Emerson Customer,false,2026-02-01T09:19:00Z
+00000000-0000-0000-0000-000000000015,parent8@tutorops.local,customer,Finley Customer,false,2026-02-01T09:20:00Z
+00000000-0000-0000-0000-000000000016,parent9@tutorops.local,customer,Harper Customer,false,2026-02-01T09:21:00Z
+00000000-0000-0000-0000-000000000017,parent10@tutorops.local,customer,Indigo Customer,false,2026-02-01T09:22:00Z
