@@ -1,5 +1,5 @@
 -- VS9 verification queries (run as each role's JWT)
--- NOTE: Replace :intake_id, :student_id, :tutor_id, :manager_id with real UUIDs.
+-- NOTE: Replace :intake_id, :other_intake_id, :student_id, :tutor_id, :manager_id with real UUIDs.
 
 -- =====================
 -- CUSTOMER
@@ -40,9 +40,11 @@ update public.slotting_suggestions
   where intake_id = :intake_id
 returning id, status, approved_by, approved_at, student_id;
 
--- Expect: second approved suggestion for the same tutor+slot fails (unique partial index)
+-- Expect: second approved suggestion for the same tutor+slot fails due to
+-- `slotting_suggestions_approved_tutor_slot_uniq` (uses a different intake_id
+-- so it does not fail first on `slotting_suggestions_intake_slot_uniq`)
 insert into public.slotting_suggestions (intake_id, tutor_id, session_date, start_time, end_time, score, reasons, status, approved_by, approved_at, student_id)
-values (:intake_id, :tutor_id, current_date + 7, '09:00', '10:00', 99, '{"why":"double book"}', 'approved', :manager_id, now(), :student_id);
+values (:other_intake_id, :tutor_id, current_date + 7, '09:00', '10:00', 99, '{"why":"double book"}', 'approved', :manager_id, now(), :student_id);
 
 -- =====================
 -- ROLLBACK NOTES
@@ -56,4 +58,3 @@ values (:intake_id, :tutor_id, current_date + 7, '09:00', '10:00', 99, '{"why":"
 --    alter table public.slotting_suggestions disable row level security;
 -- 3) Drop table:
 --    drop table if exists public.slotting_suggestions;
-
