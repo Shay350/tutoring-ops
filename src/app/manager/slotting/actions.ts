@@ -21,6 +21,25 @@ const DEFAULT_HORIZON_DAYS = 14;
 const DEFAULT_LIMIT = 30;
 const MAX_STUDENTS_PER_TUTOR_PER_HOUR = 4;
 
+function parseOptionalBoundedInt(
+  rawValue: string,
+  min: number,
+  max: number,
+  fallback: number
+): number {
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(parsed, max));
+}
+
 function buildSuggestionKey(input: {
   tutorId: string;
   sessionDate: string;
@@ -47,13 +66,13 @@ export async function generateSlottingSuggestionsForIntake(
     return toActionError("Missing intake id.");
   }
 
-  const horizonDays = Number.isFinite(Number(horizonDaysRaw))
-    ? Math.max(1, Math.min(Number(horizonDaysRaw), 60))
-    : DEFAULT_HORIZON_DAYS;
-
-  const limit = Number.isFinite(Number(limitRaw))
-    ? Math.max(1, Math.min(Number(limitRaw), 200))
-    : DEFAULT_LIMIT;
+  const horizonDays = parseOptionalBoundedInt(
+    horizonDaysRaw,
+    1,
+    60,
+    DEFAULT_HORIZON_DAYS
+  );
+  const limit = parseOptionalBoundedInt(limitRaw, 1, 200, DEFAULT_LIMIT);
 
   const [{ data: intake, error: intakeError }, { data: student, error: studentError }] =
     await Promise.all([
@@ -498,6 +517,32 @@ export async function approveSlottingSuggestion(
         }
       }
     }
+
+    if (!assignment) {
+      const { error: createAssignmentError } = await context.supabase
+        .from("assignments")
+        .insert({
+          student_id: studentId,
+          tutor_id: suggestion.tutor_id,
+          assigned_by: context.user.id,
+          status: "active",
+        });
+
+      if (createAssignmentError) {
+        const { data: fallbackAssignment, error: fallbackAssignmentError } =
+          await context.supabase
+            .from("assignments")
+            .select("id")
+            .eq("student_id", studentId)
+            .eq("tutor_id", suggestion.tutor_id)
+            .eq("status", "active")
+            .maybeSingle();
+
+        if (fallbackAssignmentError || !fallbackAssignment) {
+          return toActionError("Unable to assign tutor for this suggestion.");
+        }
+      }
+    }
   }
 
   const alreadyApproved = suggestion.status === "approved";
@@ -594,4 +639,3 @@ export async function approveSlottingSuggestion(
 
   return toActionSuccess("Suggestion approved and scheduled.");
 }
-
