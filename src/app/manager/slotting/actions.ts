@@ -533,7 +533,7 @@ export async function approveSlottingSuggestion(
             manager: { decision: { kind: "approve", note: null, at: new Date().toISOString() } },
           };
 
-    const { error: approveError } = await context.supabase
+    const { data: approvedSuggestion, error: approveError } = await context.supabase
       .from("slotting_suggestions")
       .update({
         status: "approved",
@@ -543,9 +543,15 @@ export async function approveSlottingSuggestion(
         reasons: nextReasons,
       })
       .eq("id", suggestionId)
-      .eq("status", "new");
+      .eq("status", "new")
+      .select("id")
+      .maybeSingle();
 
     if (approveError) {
+      return toActionError("Unable to approve suggestion (may already be taken).");
+    }
+
+    if (!approvedSuggestion) {
       return toActionError("Unable to approve suggestion (may already be taken).");
     }
   }
@@ -594,4 +600,3 @@ export async function approveSlottingSuggestion(
 
   return toActionSuccess("Suggestion approved and scheduled.");
 }
-
