@@ -24,6 +24,8 @@ import {
 import { generateUniqueShortCode } from "@/lib/short-codes";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { generateSlottingSuggestionsForIntake } from "@/app/manager/slotting/actions";
+
 type SessionBillingRow = {
   id: string;
   student_id: string;
@@ -177,6 +179,17 @@ export async function approveIntake(
   revalidatePath("/manager");
   revalidatePath("/manager/pipeline");
   revalidatePath(`/manager/pipeline/${intakeId}`);
+
+  try {
+    const slottingForm = new FormData();
+    slottingForm.set("intake_id", intakeId);
+    await generateSlottingSuggestionsForIntake(
+      { status: "idle", message: "" },
+      slottingForm
+    );
+  } catch {
+    // Best-effort: intake approval should not fail if slotting generation fails.
+  }
 
   return toActionSuccess("Intake approved and student created.");
 }
