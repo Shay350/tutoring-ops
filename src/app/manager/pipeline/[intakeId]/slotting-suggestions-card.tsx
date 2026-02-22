@@ -4,7 +4,6 @@ import { useFormState } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatTimeRange } from "@/lib/format";
@@ -14,6 +13,19 @@ type ActionHandler = (
   prevState: ActionState,
   formData: FormData
 ) => Promise<ActionState>;
+
+export type SlottingSuggestionView = {
+  id: string;
+  rank: number;
+  tutorName: string;
+  tutorId: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  score: number;
+  status: string;
+  reasons: unknown;
+};
 
 function FormMessage({
   message,
@@ -40,112 +52,6 @@ function FormMessage({
     </p>
   );
 }
-
-export function ApproveIntakeForm({
-  intakeId,
-  action,
-}: {
-  intakeId: string;
-  action: ActionHandler;
-}) {
-  const [state, formAction] = useFormState(action, initialActionState);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Approve intake</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="intake_id" value={intakeId} />
-          <p className="text-sm text-muted-foreground">
-            Approving this intake will create a student record.
-          </p>
-          <FormMessage
-            message={state.message}
-            status={state.status}
-            successTestId="intake-approved"
-          />
-          <Button type="submit" data-testid="intake-approve">
-            Approve and create student
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-type TutorOption = { id: string; full_name: string | null };
-
-export function AssignTutorForm({
-  intakeId,
-  studentId,
-  tutors,
-  action,
-}: {
-  intakeId: string;
-  studentId: string;
-  tutors: TutorOption[];
-  action: ActionHandler;
-}) {
-  const [state, formAction] = useFormState(action, initialActionState);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Assign a tutor</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={formAction}
-          className="grid gap-4"
-          data-testid="assign-tutor"
-        >
-          <input type="hidden" name="student_id" value={studentId} />
-          <input type="hidden" name="intake_id" value={intakeId} />
-          <div className="space-y-2">
-            <Label htmlFor="tutor_id">Tutor</Label>
-            <select
-              id="tutor_id"
-              name="tutor_id"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              required
-              data-testid="assign-tutor-select"
-            >
-              <option value="">Select a tutor</option>
-              {tutors.map((tutor) => (
-                <option key={tutor.id} value={tutor.id}>
-                  {tutor.full_name ?? "Tutor"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <FormMessage
-            message={state.message}
-            status={state.status}
-            successTestId="assign-success"
-          />
-          <Button type="submit" data-testid="assign-submit">
-            Assign tutor
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-export type SlottingSuggestionView = {
-  id: string;
-  rank: number;
-  tutorName: string;
-  tutorId: string;
-  sessionDate: string;
-  startTime: string;
-  endTime: string;
-  score: number;
-  status: string;
-  reasons: unknown;
-};
 
 function SlottingSuggestionRow({
   intakeId,
@@ -199,6 +105,11 @@ function SlottingSuggestionRow({
               size="sm"
               data-testid="slotting-approve"
               disabled={isTerminal || disableApprove}
+              title={
+                disableApprove
+                  ? "Approve intake first to create a student record."
+                  : undefined
+              }
             >
               Approve
             </Button>
@@ -219,32 +130,46 @@ function SlottingSuggestionRow({
         </div>
       </div>
 
-      {disableApprove && !isTerminal ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Approve intake first to create a student record.
-        </p>
-      ) : null}
-
-      <div className="mt-2 text-xs text-muted-foreground" data-testid="slotting-why">
+      <div className="mt-2 text-sm text-muted-foreground" data-testid="slotting-why">
         {formatted.summary ? (
           <div className="font-medium text-slate-700">{formatted.summary}</div>
         ) : null}
         <ul className="mt-1 list-disc space-y-1 pl-5">
-          {formatted.lines.map((line) => (
+          {formatted.lines.slice(0, 6).map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
+        {formatted.lines.length > 6 ? (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-sky-700">
+              Show all reasons
+            </summary>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {formatted.lines.slice(6).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </div>
 
       <div className="mt-2 grid gap-1">
-        <FormMessage message={approveState.message} status={approveState.status} />
-        <FormMessage message={rejectState.message} status={rejectState.status} />
+        <FormMessage
+          message={approveState.message}
+          status={approveState.status}
+          successTestId="slotting-approved"
+        />
+        <FormMessage
+          message={rejectState.message}
+          status={rejectState.status}
+          successTestId="slotting-rejected"
+        />
       </div>
     </div>
   );
 }
 
-export function SlottingSuggestionsCard({
+export default function SlottingSuggestionsCard({
   intakeId,
   suggestions,
   disableApprove,
@@ -280,10 +205,11 @@ export function SlottingSuggestionsCard({
           ))
         ) : (
           <p className="text-sm text-muted-foreground">
-            No slotting suggestions are available yet.
+            No slotting suggestions yet.
           </p>
         )}
       </CardContent>
     </Card>
   );
 }
+

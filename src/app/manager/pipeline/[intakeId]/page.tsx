@@ -46,6 +46,13 @@ import {
   AssignTutorForm,
 } from "../pipeline-forms";
 import AssignSessionScheduler from "../assign-session-scheduler";
+import {
+  approveSlottingSuggestion,
+  rejectSlottingSuggestion,
+} from "../../slotting/actions";
+import SlottingSuggestionsCard, {
+  type SlottingSuggestionView,
+} from "./slotting-suggestions-card";
 
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
@@ -95,17 +102,31 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     .eq("intake_id", intake.id)
     .maybeSingle();
 
-  const [tutorsResult, operatingHoursResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, full_name")
-      .eq("role", "tutor")
-      .order("full_name", { ascending: true }),
-    supabase
-      .from("operating_hours")
-      .select("weekday, is_closed, open_time, close_time")
-      .order("weekday", { ascending: true }),
-  ]);
+  const [tutorsResult, operatingHoursResult, slottingSuggestionsResult] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "tutor")
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("operating_hours")
+        .select("weekday, is_closed, open_time, close_time")
+        .order("weekday", { ascending: true }),
+      supabase
+        .from("slotting_suggestions")
+        .select(
+          "id, tutor_id, session_date, start_time, end_time, score, reasons, status, created_at"
+        )
+        .eq("intake_id", intake.id)
+        .order("score", { ascending: false })
+        .order("session_date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .order("created_at", { ascending: true }),
+    ]);
+
+  const slottingSuggestions = slottingSuggestionsResult.data ?? [];
+  const slottingSuggestionsError = slottingSuggestionsResult.error;
 
   let assignment:
     | { id: string; tutor_id: string | null; status: string | null }
@@ -119,6 +140,27 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     billed_to_membership: boolean | null;
   }> = [];
   const tutors = tutorsResult.data ?? [];
+  const tutorNamesById = tutors.reduce<Record<string, string>>((acc, row) => {
+    acc[row.id] = row.full_name?.trim() || "Tutor";
+    return acc;
+  }, {});
+
+  const slottingSuggestionsView: SlottingSuggestionView[] = slottingSuggestions.map(
+    (suggestion, index) => ({
+      id: suggestion.id,
+      rank: index + 1,
+      tutorName:
+        tutorNamesById[suggestion.tutor_id] ??
+        (suggestion.tutor_id ? "Tutor" : "—"),
+      tutorId: suggestion.tutor_id,
+      sessionDate: suggestion.session_date ?? "",
+      startTime: suggestion.start_time ?? "",
+      endTime: suggestion.end_time ?? "",
+      score: suggestion.score ?? 0,
+      status: suggestion.status ?? "new",
+      reasons: suggestion.reasons,
+    })
+  );
 
   if (student) {
     const [assignmentResult, sessionsResult] = await Promise.all([
@@ -356,6 +398,28 @@ export default async function IntakeDetailPage({ params }: PageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {slottingSuggestionsError ? (
+        <Card data-testid="slotting-suggestions-list">
+          <CardHeader>
+            <CardTitle>Slotting suggestions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Slotting suggestions are unavailable. Apply the VS9 suggestions
+              migration to enable this view.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <SlottingSuggestionsCard
+          intakeId={intake.id}
+          suggestions={slottingSuggestionsView}
+          disableApprove={!student}
+          approveAction={approveSlottingSuggestion}
+          rejectAction={rejectSlottingSuggestion}
+        />
+      )}
 
       <Card data-testid="intake-schedule-context">
         <CardHeader className="flex flex-row items-center justify-between gap-3">
