@@ -309,7 +309,7 @@ export async function rejectSlottingSuggestion(
           },
         };
 
-  const { error: updateError } = await context.supabase
+  const { data: rejectedSuggestion, error: updateError } = await context.supabase
     .from("slotting_suggestions")
     .update({
       status: "rejected",
@@ -318,10 +318,16 @@ export async function rejectSlottingSuggestion(
       reasons: nextReasons,
     })
     .eq("id", suggestionId)
-    .eq("status", "new");
+    .eq("status", "new")
+    .select("id")
+    .maybeSingle();
 
   if (updateError) {
     return toActionError("Unable to reject suggestion.");
+  }
+
+  if (!rejectedSuggestion) {
+    return toActionError("Unable to reject suggestion (may already be taken).");
   }
 
   if (intakeId) {
@@ -361,6 +367,7 @@ export async function approveSlottingSuggestion(
   }
 
   const resolvedIntakeId = intakeId || suggestion.intake_id;
+  const alreadyApproved = suggestion.status === "approved";
 
   if (suggestion.status === "rejected") {
     return toActionError("Rejected suggestions cannot be approved.");
@@ -377,130 +384,129 @@ export async function approveSlottingSuggestion(
   }
 
   const studentId = student.id;
-
-  const { data: assignment, error: assignmentError } = await context.supabase
-    .from("assignments")
-    .select("id, tutor_id")
-    .eq("student_id", studentId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (assignmentError) {
-    return toActionError("Unable to verify assignment.");
-  }
-
-  if (assignment && assignment.tutor_id !== suggestion.tutor_id) {
-    return toActionError("Student is already assigned to a different tutor.");
-  }
-
-  if (!assignment) {
-    const { error: createAssignmentError } = await context.supabase
+  if (!alreadyApproved) {
+    const { data: assignment, error: assignmentError } = await context.supabase
       .from("assignments")
-      .insert({
-        student_id: studentId,
-        tutor_id: suggestion.tutor_id,
-        assigned_by: context.user.id,
-        status: "active",
-      });
+      .select("id, tutor_id")
+      .eq("student_id", studentId)
+      .eq("status", "active")
+      .maybeSingle();
 
-    if (createAssignmentError) {
-      return toActionError("Unable to assign tutor for this suggestion.");
+    if (assignmentError) {
+      return toActionError("Unable to verify assignment.");
     }
-  }
 
-  const { data: operatingHoursRows, error: operatingHoursError } =
-    await context.supabase
-      .from("operating_hours")
-      .select("weekday, is_closed, open_time, close_time");
-
-  if (operatingHoursError) {
-    return toActionError("Unable to validate operating hours.");
-  }
-
-  const weekday = weekdayFromDateKey(suggestion.session_date);
-  if (weekday === null) {
-    return toActionError("Suggestion has an invalid session date.");
-  }
-
-  const operatingHoursByWeekday = mapOperatingHoursByWeekday(
-    (operatingHoursRows ?? []) as OperatingHoursRow[]
-  );
-  if (
-    !isTimeRangeWithinOperatingHours(
-      operatingHoursByWeekday[weekday],
-      suggestion.start_time,
-      suggestion.end_time
-    )
-  ) {
-    return toActionError("Suggestion is outside operating hours.");
-  }
-
-  const { data: existingSessions, error: existingError } = await context.supabase
-    .from("sessions")
-    .select("id, student_id, start_time, end_time, status")
-    .eq("tutor_id", suggestion.tutor_id)
-    .neq("status", "canceled")
-    .eq("session_date", suggestion.session_date);
-
-  if (existingError) {
-    return toActionError("Unable to verify tutor capacity for this slot.");
-  }
-
-  const incomingStart = parseTimeToMinutes(suggestion.start_time);
-  const incomingEnd = parseTimeToMinutes(suggestion.end_time);
-  if (incomingStart === null || incomingEnd === null) {
-    return toActionError("Suggestion has invalid start/end times.");
-  }
-
-  const overlapCount = (existingSessions ?? []).filter((row) => {
-    const startMinutes = row.start_time ? parseTimeToMinutes(row.start_time) : null;
-    const endMinutes = row.end_time ? parseTimeToMinutes(row.end_time) : null;
-    if (startMinutes === null || endMinutes === null) {
-      return false;
+    if (assignment && assignment.tutor_id !== suggestion.tutor_id) {
+      return toActionError("Student is already assigned to a different tutor.");
     }
-    return incomingStart < endMinutes && incomingEnd > startMinutes;
-  }).length;
 
-  if (overlapCount >= MAX_STUDENTS_PER_TUTOR_PER_HOUR) {
-    return toActionError("Tutor is at capacity for this hour.");
-  }
+    if (!assignment) {
+      const { error: createAssignmentError } = await context.supabase
+        .from("assignments")
+        .insert({
+          student_id: studentId,
+          tutor_id: suggestion.tutor_id,
+          assigned_by: context.user.id,
+          status: "active",
+        });
 
-  if (!allowOverbook) {
-    const todayKey = formatDateKey(new Date());
-    if (suggestion.session_date >= todayKey) {
-      const [{ data: membership }, { data: existingUpcomingSessions }] =
-        await Promise.all([
-          context.supabase
-            .from("memberships")
-            .select("hours_remaining")
-            .eq("student_id", studentId)
-            .maybeSingle(),
-          context.supabase
-            .from("sessions")
-            .select("id")
-            .eq("student_id", studentId)
-            .eq("status", "scheduled")
-            .gte("session_date", todayKey),
-        ]);
+      if (createAssignmentError) {
+        return toActionError("Unable to assign tutor for this suggestion.");
+      }
+    }
 
-      const hoursRemaining = membership?.hours_remaining;
-      const remaining = Number.isFinite(hoursRemaining ?? NaN)
-        ? Number(hoursRemaining)
-        : null;
+    const { data: operatingHoursRows, error: operatingHoursError } =
+      await context.supabase
+        .from("operating_hours")
+        .select("weekday, is_closed, open_time, close_time");
 
-      if (remaining !== null) {
-        const reserved = (existingUpcomingSessions ?? []).length;
-        const projected = reserved + 1;
-        if (projected > remaining) {
-          return toActionError(
-            `Upcoming sessions (${projected}) exceed membership hours remaining (${remaining}). Check “Allow scheduling beyond prepaid hours” to override.`
-          );
+    if (operatingHoursError) {
+      return toActionError("Unable to validate operating hours.");
+    }
+
+    const weekday = weekdayFromDateKey(suggestion.session_date);
+    if (weekday === null) {
+      return toActionError("Suggestion has an invalid session date.");
+    }
+
+    const operatingHoursByWeekday = mapOperatingHoursByWeekday(
+      (operatingHoursRows ?? []) as OperatingHoursRow[]
+    );
+    if (
+      !isTimeRangeWithinOperatingHours(
+        operatingHoursByWeekday[weekday],
+        suggestion.start_time,
+        suggestion.end_time
+      )
+    ) {
+      return toActionError("Suggestion is outside operating hours.");
+    }
+
+    const { data: existingSessions, error: existingError } = await context.supabase
+      .from("sessions")
+      .select("id, student_id, start_time, end_time, status")
+      .eq("tutor_id", suggestion.tutor_id)
+      .neq("status", "canceled")
+      .eq("session_date", suggestion.session_date);
+
+    if (existingError) {
+      return toActionError("Unable to verify tutor capacity for this slot.");
+    }
+
+    const incomingStart = parseTimeToMinutes(suggestion.start_time);
+    const incomingEnd = parseTimeToMinutes(suggestion.end_time);
+    if (incomingStart === null || incomingEnd === null) {
+      return toActionError("Suggestion has invalid start/end times.");
+    }
+
+    const overlapCount = (existingSessions ?? []).filter((row) => {
+      const startMinutes = row.start_time ? parseTimeToMinutes(row.start_time) : null;
+      const endMinutes = row.end_time ? parseTimeToMinutes(row.end_time) : null;
+      if (startMinutes === null || endMinutes === null) {
+        return false;
+      }
+      return incomingStart < endMinutes && incomingEnd > startMinutes;
+    }).length;
+
+    if (overlapCount >= MAX_STUDENTS_PER_TUTOR_PER_HOUR) {
+      return toActionError("Tutor is at capacity for this hour.");
+    }
+
+    if (!allowOverbook) {
+      const todayKey = formatDateKey(new Date());
+      if (suggestion.session_date >= todayKey) {
+        const [{ data: membership }, { data: existingUpcomingSessions }] =
+          await Promise.all([
+            context.supabase
+              .from("memberships")
+              .select("hours_remaining")
+              .eq("student_id", studentId)
+              .maybeSingle(),
+            context.supabase
+              .from("sessions")
+              .select("id")
+              .eq("student_id", studentId)
+              .eq("status", "scheduled")
+              .gte("session_date", todayKey),
+          ]);
+
+        const hoursRemaining = membership?.hours_remaining;
+        const remaining = Number.isFinite(hoursRemaining ?? NaN)
+          ? Number(hoursRemaining)
+          : null;
+
+        if (remaining !== null) {
+          const reserved = (existingUpcomingSessions ?? []).length;
+          const projected = reserved + 1;
+          if (projected > remaining) {
+            return toActionError(
+              `Upcoming sessions (${projected}) exceed membership hours remaining (${remaining}). Check “Allow scheduling beyond prepaid hours” to override.`
+            );
+          }
         }
       }
     }
   }
-
-  const alreadyApproved = suggestion.status === "approved";
   if (!alreadyApproved) {
     const priorReasons = suggestion.reasons as SlottingSuggestionReasonsV1 | null;
     const nextReasons: SlottingSuggestionReasonsV1 =
