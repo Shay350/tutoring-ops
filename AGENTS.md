@@ -13,3 +13,7 @@ Hard rules:
 - No schema changes without RLS
 - No merge with failing tests
 - Main Dev is only one who merges to main
+
+Dev workflow:
+- All changes land via PRs (no direct pushes to `main`) unless explicitly approved as a one-off.
+- Use stacked PRs for multi-agent work (DB/RLS first, then app, then QA/tests).

@@ -249,6 +249,14 @@ STATUS: NOT STARTED
 
 ---
 
+## VS9 — Multi-Agent Execution
+
+Recommended stacked PR flow (see `VS9_MULTI_AGENT.md`):
+- PR 1: DB/RLS for suggestions tables
+- PR 2: Deterministic generator + storage
+- PR 3: Manager review/approve UI
+- PR 4: QA tests (unit + e2e) and hardening
+
 ## VS9 — Capabilities
 
 - After customer intake submission, system produces slotting suggestions:

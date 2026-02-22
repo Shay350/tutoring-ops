@@ -50,3 +50,40 @@
 1) Apply migrations via Supabase CLI or SQL editor.
 2) Run role-based verification queries in `supabase/verification/20260129_vs1_db_verification.sql` using JWTs for each role.
 3) If rollback needed, follow rollback notes in the same verification file.
+
+============================================================
+
+# DB Handoff to Main — VS9 (Template)
+
+This section is a template for VS9 DB work. Fill in when VS9 DB PR is ready.
+
+## Migration files
+- `supabase/migrations/<timestamp>_vs9_slotting_suggestions.sql`
+
+## Tables and columns (proposed)
+- `public.slotting_suggestions`
+  - `id uuid pk`
+  - `intake_id uuid -> public.intakes`
+  - `student_id uuid -> public.students` (nullable until intake approved)
+  - `tutor_id uuid -> auth.users`
+  - `session_date date`
+  - `start_time time`
+  - `end_time time`
+  - `score int` (rank ordering)
+  - `reasons jsonb` (explainable "why" payload)
+  - `status text` (`new|approved|rejected`)
+  - `approved_by uuid -> auth.users` (nullable)
+  - `approved_at timestamptz` (nullable)
+  - `created_at timestamptz`
+
+## RLS policy summary (required)
+- Default deny
+- Managers: select/insert/update/delete all suggestions
+- Customers/Tutors: no access (unless explicitly added later)
+
+## Indexes (expected)
+- `intake_id`, `status`, `(tutor_id, session_date, start_time)`
+
+## Gotchas
+- Enforce idempotency at approval time (unique constraint or app-level guard).
+- Keep "reasons" stable and deterministic for debuggability.
