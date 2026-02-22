@@ -66,9 +66,11 @@ test.describe("@smoke VS9 intake -> suggestions -> approve -> session created", 
 
     await expect(firstSuggestionRow).toContainText(/approved/i);
 
-    const sessionsTable = page.getByRole("table").first();
-    const rowCount = await sessionsTable.getByRole("row").count();
-    expect(rowCount).toBeGreaterThan(1);
+    const sessionsTable = page.getByRole("table").nth(1);
+    await expect(sessionsTable).toBeVisible();
+    await expect(sessionsTable.getByText("No sessions yet.")).toHaveCount(0);
+    await expect(
+      sessionsTable.getByRole("row").filter({ hasText: /scheduled/i }).first()
+    ).toBeVisible();
   });
 });
-
