@@ -67,7 +67,7 @@ Filled for PR1 (DB/RLS): slotting suggestions table + manager-only RLS.
 - `public.slotting_suggestions`
   - `id uuid pk default gen_random_uuid()`
   - `intake_id uuid not null -> public.intakes (on delete cascade)`
-  - `student_id uuid -> public.students (nullable; on delete set null)`
+  - `student_id uuid -> public.students (nullable; on delete restrict)`
   - `tutor_id uuid not null -> auth.users`
   - `session_date date not null`
   - `start_time time not null`
@@ -75,7 +75,7 @@ Filled for PR1 (DB/RLS): slotting suggestions table + manager-only RLS.
   - `score int not null default 0` (rank ordering)
   - `reasons jsonb not null default '{}'::jsonb` (explainable "why" payload)
   - `status text not null default 'new'` (`new|approved|rejected`)
-  - `approved_by uuid -> auth.users` (nullable; on delete set null)
+  - `approved_by uuid -> auth.users` (nullable; on delete restrict)
   - `approved_at timestamptz` (nullable)
   - `created_at timestamptz not null default now()`
 
@@ -100,6 +100,7 @@ Filled for PR1 (DB/RLS): slotting suggestions table + manager-only RLS.
 
 ## Gotchas
 - Approval sets `status='approved'` and must also set `student_id`, `approved_by`, and `approved_at` (DB constraint).
+- Approved rows protect referenced `student_id` and `approved_by` from deletion (`on delete restrict`) to keep approval audit integrity consistent with the approved-fields check.
 - Approving a second suggestion with the same `(tutor_id, session_date, start_time, end_time)` will fail due to the partial unique index.
 - Suggested generator behavior: insert with upsert on `(intake_id, tutor_id, session_date, start_time, end_time)` and never overwrite approved rows.
 - Keep "reasons" stable and deterministic for debuggability.

@@ -3,7 +3,7 @@
 create table if not exists public.slotting_suggestions (
   id uuid primary key default gen_random_uuid(),
   intake_id uuid not null references public.intakes (id) on delete cascade,
-  student_id uuid references public.students (id) on delete set null,
+  student_id uuid references public.students (id) on delete restrict,
   tutor_id uuid not null references auth.users (id) on delete restrict,
   session_date date not null,
   start_time time not null,
@@ -11,7 +11,7 @@ create table if not exists public.slotting_suggestions (
   score int not null default 0,
   reasons jsonb not null default '{}'::jsonb,
   status text not null default 'new' check (status in ('new', 'approved', 'rejected')),
-  approved_by uuid references auth.users (id) on delete set null,
+  approved_by uuid references auth.users (id) on delete restrict,
   approved_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -78,4 +78,3 @@ create policy "Managers can delete slotting suggestions"
   on public.slotting_suggestions
   for delete
   using (public.is_manager(auth.uid()));
-
