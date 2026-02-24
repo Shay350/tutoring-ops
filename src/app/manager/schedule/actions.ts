@@ -23,6 +23,7 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
+import { getDefaultLocationId } from "@/lib/locations";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 
 function parseAssignmentPair(pair: string): { studentId: string; tutorId: string } {
@@ -135,10 +136,20 @@ export async function createRecurringSessions(
 
   const recurrenceRule = `weekly:${weekdays.join(",")}`;
 
+  let defaultLocationId: string;
+  try {
+    defaultLocationId = await getDefaultLocationId(context.supabase);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load default location."
+    );
+  }
+
   const { data: operatingHoursRows, error: operatingHoursError } =
     await context.supabase
       .from("operating_hours")
-      .select("weekday, is_closed, open_time, close_time");
+      .select("weekday, is_closed, open_time, close_time")
+      .eq("location_id", defaultLocationId);
 
   if (operatingHoursError) {
     return toActionError("Unable to validate operating hours for this schedule.");

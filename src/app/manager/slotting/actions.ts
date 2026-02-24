@@ -10,6 +10,7 @@ import {
   mapOperatingHoursByWeekday,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
+import { getDefaultLocationId } from "@/lib/locations";
 import { addDaysUtc, formatDateKey, parseTimeToMinutes } from "@/lib/schedule";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 import {
@@ -130,6 +131,15 @@ export async function generateSlottingSuggestionsForIntake(
     return toActionSuccess("No tutors available to generate suggestions.");
   }
 
+  let defaultLocationId: string;
+  try {
+    defaultLocationId = await getDefaultLocationId(context.supabase);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load default location."
+    );
+  }
+
   const todayKey = formatDateKey(new Date());
   const endKey = formatDateKey(
     addDaysUtc(new Date(`${todayKey}T00:00:00Z`), horizonDays - 1)
@@ -140,6 +150,7 @@ export async function generateSlottingSuggestionsForIntake(
       context.supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
+        .eq("location_id", defaultLocationId)
         .order("weekday", { ascending: true }),
       context.supabase
         .from("sessions")
@@ -419,10 +430,20 @@ export async function approveSlottingSuggestion(
       return toActionError("Student is already assigned to a different tutor.");
     }
 
+    let defaultLocationId: string;
+    try {
+      defaultLocationId = await getDefaultLocationId(context.supabase);
+    } catch (error) {
+      return toActionError(
+        error instanceof Error ? error.message : "Unable to load default location."
+      );
+    }
+
     const { data: operatingHoursRows, error: operatingHoursError } =
       await context.supabase
         .from("operating_hours")
-        .select("weekday, is_closed, open_time, close_time");
+        .select("weekday, is_closed, open_time, close_time")
+        .eq("location_id", defaultLocationId);
 
     if (operatingHoursError) {
       return toActionError("Unable to validate operating hours.");

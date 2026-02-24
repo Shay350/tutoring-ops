@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
+import { getDefaultLocationId } from "@/lib/locations";
 import type { OperatingHoursRow } from "@/lib/operating-hours";
 import { normalizeOperatingHours } from "@/lib/operating-hours";
 import {
@@ -104,10 +105,22 @@ export default async function ManagerSchedulePage({
   const nextWeek = formatDateKey(addDaysUtc(weekStart, 7));
   const capacityPerSlot = Math.max(Object.keys(tutorNames).length, 1);
 
-  const { data: operatingHoursData, error: operatingHoursError } = await supabase
+  let defaultLocationId: string | null = null;
+  try {
+    defaultLocationId = await getDefaultLocationId(supabase);
+  } catch {
+    defaultLocationId = null;
+  }
+
+  const operatingHoursQuery = supabase
     .from("operating_hours")
     .select("weekday, is_closed, open_time, close_time")
     .order("weekday", { ascending: true });
+
+  const { data: operatingHoursData, error: operatingHoursError } =
+    defaultLocationId
+      ? await operatingHoursQuery.eq("location_id", defaultLocationId)
+      : await operatingHoursQuery;
 
   const operatingHours = normalizeOperatingHours(
     (operatingHoursData ?? []) as OperatingHoursRow[]

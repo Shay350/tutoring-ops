@@ -13,6 +13,7 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
+import { getDefaultLocationId } from "@/lib/locations";
 import { computeBillingDecision } from "@/lib/membership";
 import {
   addDaysUtc,
@@ -314,10 +315,20 @@ export async function createSession(
     return toActionError(timeError);
   }
 
+  let defaultLocationId: string;
+  try {
+    defaultLocationId = await getDefaultLocationId(context.supabase);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load default location."
+    );
+  }
+
   const { data: operatingHoursRows, error: operatingHoursError } =
     await context.supabase
       .from("operating_hours")
-      .select("weekday, is_closed, open_time, close_time");
+      .select("weekday, is_closed, open_time, close_time")
+      .eq("location_id", defaultLocationId);
 
   if (operatingHoursError) {
     return toActionError("Unable to validate operating hours for this session.");
