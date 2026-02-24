@@ -104,13 +104,18 @@ create policy "Managers and tutors can read assigned locations"
     and public.has_location(auth.uid(), locations.id)
   );
 
-drop policy if exists "Customers can read active locations" on public.locations;
-create policy "Customers can read active locations"
+drop policy if exists "Customers can read own locations" on public.locations;
+create policy "Customers can read own locations"
   on public.locations
   for select
   using (
     public.has_role(auth.uid(), 'customer')
-    and active = true
+    and exists (
+      select 1
+      from public.intakes i
+      where i.customer_id = auth.uid()
+        and i.location_id = locations.id
+    )
   );
 
 -- 5) Backfill: seed locations and assignments
@@ -209,8 +214,18 @@ alter table public.operating_hours
 alter table public.operating_hours
   drop constraint if exists operating_hours_weekday_key;
 
-alter table public.operating_hours
-  add constraint operating_hours_location_weekday_key unique (location_id, weekday);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'operating_hours_location_weekday_key'
+      and conrelid = 'public.operating_hours'::regclass
+  ) then
+    alter table public.operating_hours
+      add constraint operating_hours_location_weekday_key unique (location_id, weekday);
+  end if;
+end $$;
 
 drop index if exists operating_hours_weekday_idx;
 create index if not exists operating_hours_location_weekday_idx
@@ -611,4 +626,3 @@ create policy "Managers can delete operating hours"
     public.is_manager(auth.uid())
     and public.has_location(auth.uid(), operating_hours.location_id)
   );
-

@@ -143,7 +143,7 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
 - `locations`
   - Managers: insert/update/delete
   - Managers/Tutors: select only locations assigned in `profile_locations`
-  - Customers: select active locations (for intake dropdown)
+  - Customers: select only locations tied to their own intake rows
 - `profile_locations`
   - Managers: manage (all actions)
   - Users: can read their own assignments
@@ -159,3 +159,11 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
   - `sessions.location_id` via `sessions.student_id -> students.intake_id -> intakes.location_id`, falling back to `Default`.
   - `operating_hours.location_id` set to `Default` for legacy rows, then copied to every other location.
 - To preserve pre-VS10 behavior, assigns all existing non-pending managers/tutors to all locations in `profile_locations` (can be tightened later via explicit admin assignment).
+
+## How to verify
+- Apply migrations in a dev DB (`supabase db reset` or SQL editor).
+- Confirm `locations` has `Default` plus normalized legacy values from `intakes.location`.
+- Confirm `operating_hours` has 7 weekday rows per location and uniqueness is enforced on `(location_id, weekday)`.
+- As manager with one location assignment, verify location-scoped reads/writes on `intakes`, `sessions`, `operating_hours`, and `slotting_suggestions`.
+- As tutor with one location assignment, verify reads are limited to assigned-location `students`/`assignments`/`sessions`.
+- As customer, verify visibility remains limited to own rows and own linked locations.
