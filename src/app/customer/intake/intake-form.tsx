@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ActionState } from "@/lib/action-state";
 import { initialActionState } from "@/lib/action-state";
+import type { LocationOption } from "@/lib/locations";
 
 type IntakeFormProps = {
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
+  locations: LocationOption[];
 };
 
-export default function IntakeForm({ action }: IntakeFormProps) {
+export default function IntakeForm({ action, locations }: IntakeFormProps) {
   const [state, formAction] = useFormState(action, initialActionState);
 
   return (
@@ -81,14 +83,21 @@ export default function IntakeForm({ action }: IntakeFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              name="location"
-              placeholder="Seattle, WA"
+            <Label htmlFor="location_id">Location</Label>
+            <select
+              id="location_id"
+              name="location_id"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               required
-              data-testid="intake-location"
-            />
+              data-testid="intake-location-select"
+            >
+              <option value="">Select a location</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
           </div>
           {state.status !== "idle" ? (
             <p

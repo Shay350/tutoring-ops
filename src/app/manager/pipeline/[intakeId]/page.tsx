@@ -15,6 +15,7 @@ import {
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
+import { getDefaultLocationId, getLocationIdForIntake } from "@/lib/locations";
 import {
   buildSchedulerSlots,
 } from "@/lib/intake-scheduler";
@@ -72,7 +73,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const intakeLookup = supabase
     .from("intakes")
     .select(
-      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, location_id, created_at"
+      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, location_id, created_at, locations(name)"
     );
 
   const intakeLookupRaw = String(intakeId ?? "").trim();
@@ -96,6 +97,22 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  let contextLocationId: string | null = null;
+  try {
+    contextLocationId = await getLocationIdForIntake(supabase, intake.id);
+  } catch {
+    try {
+      contextLocationId = await getDefaultLocationId(supabase);
+    } catch {
+      contextLocationId = null;
+    }
+  }
+
+  const intakeLocationRow = Array.isArray(intake.locations)
+    ? intake.locations[0]
+    : intake.locations;
+  const intakeLocationName = intakeLocationRow?.name ?? intake.location ?? "—";
+
   const { data: student } = await supabase
     .from("students")
     .select("id, full_name, status, created_at")
@@ -112,7 +129,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
-        .eq("location_id", intake.location_id)
+        .match(contextLocationId ? { location_id: contextLocationId } : {})
         .order("weekday", { ascending: true }),
       supabase
         .from("slotting_suggestions")
@@ -193,6 +210,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       "id, session_date, start_time, end_time, status, tutor_id, students(id, full_name)"
     )
     .eq("status", "scheduled")
+    .match(contextLocationId ? { location_id: contextLocationId } : {})
     .gte("session_date", weekDates[0])
     .lte("session_date", weekDates[6])
     .order("session_date", { ascending: true })
@@ -386,7 +404,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Location</p>
-              <p>{intake.location ?? "—"}</p>
+              <p>{intakeLocationName}</p>
             </div>
           </div>
           <div>
@@ -432,7 +450,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             </p>
           </div>
           <Link
-            href="/manager/schedule"
+            href={`/manager/schedule${contextLocationId ? `?location=${contextLocationId}` : ""}`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Open master schedule

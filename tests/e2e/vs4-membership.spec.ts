@@ -27,7 +27,7 @@ async function createStudentIntake(page: Page, studentName: string) {
   await page.getByTestId("intake-subjects").fill("Math, Reading");
   await page.getByTestId("intake-availability").fill("Weekdays after 4pm");
   await page.getByTestId("intake-goals").fill("Improve test scores");
-  await page.getByTestId("intake-location").fill("Austin, TX");
+  await page.getByTestId("intake-location-select").selectOption({ index: 1 });
   await page.getByTestId("intake-submit").click();
   await expect(page.getByTestId("intake-success")).toBeVisible();
 }

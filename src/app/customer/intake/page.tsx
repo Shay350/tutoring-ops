@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { listLocations } from "@/lib/locations";
 import { createClient } from "@/lib/supabase/server";
 
 import { submitIntake } from "./actions";
@@ -19,6 +20,7 @@ export default async function CustomerIntakePage() {
     .from("intakes")
     .select("id, status, student_name, subjects, created_at")
     .order("created_at", { ascending: false });
+  const locations = await listLocations(supabase, { activeOnly: true });
 
   return (
     <div className="space-y-6">
@@ -27,7 +29,7 @@ export default async function CustomerIntakePage() {
         <h1 className="text-2xl font-semibold text-slate-900">Intake</h1>
       </div>
 
-      <IntakeForm action={submitIntake} />
+      <IntakeForm action={submitIntake} locations={locations} />
 
       <Card>
         <CardHeader>

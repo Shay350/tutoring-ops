@@ -13,7 +13,7 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
-import { getDefaultLocationId, getStudentLocationId } from "@/lib/locations";
+import { getLocationIdForStudent } from "@/lib/locations";
 import { computeBillingDecision } from "@/lib/membership";
 import {
   addDaysUtc,
@@ -315,14 +315,12 @@ export async function createSession(
     return toActionError(timeError);
   }
 
-  let locationIdForValidation: string;
+  let sessionLocationId: string;
   try {
-    locationIdForValidation =
-      (await getStudentLocationId(context.supabase, studentId)) ??
-      (await getDefaultLocationId(context.supabase));
+    sessionLocationId = await getLocationIdForStudent(context.supabase, studentId);
   } catch (error) {
     return toActionError(
-      error instanceof Error ? error.message : "Unable to load session location."
+      error instanceof Error ? error.message : "Unable to load student location."
     );
   }
 
@@ -330,7 +328,7 @@ export async function createSession(
     await context.supabase
       .from("operating_hours")
       .select("weekday, is_closed, open_time, close_time")
-      .eq("location_id", locationIdForValidation);
+      .eq("location_id", sessionLocationId);
 
   if (operatingHoursError) {
     return toActionError("Unable to validate operating hours for this session.");
@@ -505,10 +503,10 @@ export async function createSession(
       created_by: context.user.id,
       status: status || "scheduled",
       session_date: dateKey,
-      location_id: locationIdForValidation,
       start_time: startTime,
       end_time: endTime,
       recurrence_rule: repeatWeekly ? "weekly:intake-assigned" : null,
+      location_id: sessionLocationId,
       short_code: sessionShortCode,
     });
   }

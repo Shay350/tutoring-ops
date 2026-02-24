@@ -24,7 +24,7 @@ export async function submitIntake(
   const subjectsRaw = String(formData.get("subjects") ?? "");
   const availability = String(formData.get("availability") ?? "").trim();
   const goals = String(formData.get("goals") ?? "").trim();
-  const location = String(formData.get("location") ?? "").trim();
+  const locationId = String(formData.get("location_id") ?? "").trim();
 
   if (!studentName) {
     return toActionError("Student name is required.");
@@ -51,7 +51,7 @@ export async function submitIntake(
     return toActionError("Goals are required.");
   }
 
-  if (!location) {
+  if (!locationId) {
     return toActionError("Location is required.");
   }
 
@@ -69,7 +69,7 @@ export async function submitIntake(
     subjects,
     availability,
     goals,
-    location,
+    location_id: locationId,
     short_code: shortCode,
   });
 
