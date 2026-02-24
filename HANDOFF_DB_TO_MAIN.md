@@ -129,7 +129,7 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
 - `public.intakes`
   - `location_id uuid not null -> public.locations` (legacy `location text` retained for history/backfill)
 - `public.sessions`
-  - `location_id uuid not null -> public.locations`
+  - `location_id uuid not null -> public.locations` (derived by trigger from `student_id -> intake.location_id`, fallback `Default`)
 - `public.operating_hours`
   - `location_id uuid not null -> public.locations`
   - uniqueness updated from `unique(weekday)` to `unique(location_id, weekday)`
@@ -137,6 +137,7 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
 ## Helper SQL functions
 - `public.default_location_id() -> uuid` (returns the id for location `name='Default'`)
 - `public.has_location(uid uuid, location_id uuid) -> boolean` (checks `profile_locations`)
+- `public.set_sessions_location_id() -> trigger` (ensures inserts/updates keep session location aligned with student intake)
 
 ## RLS policy summary (required)
 - Default deny (RLS enabled on all touched tables)
@@ -158,6 +159,7 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
   - `intakes.location_id` by mapping legacy `intakes.location` → `locations.name`, falling back to `Default`.
   - `sessions.location_id` via `sessions.student_id -> students.intake_id -> intakes.location_id`, falling back to `Default`.
   - `operating_hours.location_id` set to `Default` for legacy rows, then copied to every other location.
+- New writes to `sessions` do not rely on a `location_id` default; a trigger derives `location_id` from student intake to prevent drift.
 - To preserve pre-VS10 behavior, assigns all existing non-pending managers/tutors to all locations in `profile_locations` (can be tightened later via explicit admin assignment).
 
 ## How to verify

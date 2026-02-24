@@ -16,3 +16,48 @@ export async function getDefaultLocationId(
   return String(data);
 }
 
+export async function getIntakeLocationId(
+  supabase: SupabaseClient,
+  intakeId: string
+): Promise<string | null> {
+  if (!intakeId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("intakes")
+    .select("location_id")
+    .eq("id", intakeId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("Unable to load intake location.");
+  }
+
+  return data?.location_id ?? null;
+}
+
+export async function getStudentLocationId(
+  supabase: SupabaseClient,
+  studentId: string
+): Promise<string | null> {
+  if (!studentId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("students")
+    .select("intake_id")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("Unable to load student location.");
+  }
+
+  if (!data?.intake_id) {
+    return null;
+  }
+
+  return getIntakeLocationId(supabase, data.intake_id);
+}

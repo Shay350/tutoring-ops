@@ -36,6 +36,8 @@ create or replace function public.default_location_id()
 returns uuid
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select id
   from public.locations
@@ -191,11 +193,40 @@ set location_id = coalesce(
 where se.location_id is null;
 
 alter table public.sessions
-  alter column location_id set default public.default_location_id(),
+  alter column location_id drop default,
   alter column location_id set not null;
 
 create index if not exists sessions_location_id_idx
   on public.sessions (location_id);
+
+create or replace function public.set_sessions_location_id()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.location_id is null then
+    select i.location_id
+      into new.location_id
+      from public.students st
+      join public.intakes i on i.id = st.intake_id
+      where st.id = new.student_id
+      limit 1;
+
+    if new.location_id is null then
+      new.location_id := public.default_location_id();
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists set_sessions_location_id on public.sessions;
+create trigger set_sessions_location_id
+  before insert or update of student_id, location_id on public.sessions
+  for each row execute function public.set_sessions_location_id();
 
 -- 8) Location-ize operating hours (copy legacy global rows to each location)
 

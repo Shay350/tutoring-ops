@@ -10,7 +10,7 @@ import {
   mapOperatingHoursByWeekday,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
-import { getDefaultLocationId } from "@/lib/locations";
+import { getDefaultLocationId, getIntakeLocationId } from "@/lib/locations";
 import { addDaysUtc, formatDateKey, parseTimeToMinutes } from "@/lib/schedule";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 import {
@@ -79,7 +79,7 @@ export async function generateSlottingSuggestionsForIntake(
     await Promise.all([
       context.supabase
         .from("intakes")
-        .select("id, availability")
+        .select("id, availability, location_id")
         .eq("id", intakeId)
         .maybeSingle(),
       context.supabase
@@ -131,12 +131,13 @@ export async function generateSlottingSuggestionsForIntake(
     return toActionSuccess("No tutors available to generate suggestions.");
   }
 
-  let defaultLocationId: string;
+  let locationIdForValidation: string;
   try {
-    defaultLocationId = await getDefaultLocationId(context.supabase);
+    locationIdForValidation =
+      intake.location_id ?? (await getDefaultLocationId(context.supabase));
   } catch (error) {
     return toActionError(
-      error instanceof Error ? error.message : "Unable to load default location."
+      error instanceof Error ? error.message : "Unable to load intake location."
     );
   }
 
@@ -150,7 +151,7 @@ export async function generateSlottingSuggestionsForIntake(
       context.supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
-        .eq("location_id", defaultLocationId)
+        .eq("location_id", locationIdForValidation)
         .order("weekday", { ascending: true }),
       context.supabase
         .from("sessions")
@@ -399,6 +400,17 @@ export async function approveSlottingSuggestion(
   const resolvedIntakeId = intakeId || suggestion.intake_id;
   const alreadyApproved = suggestion.status === "approved";
 
+  let suggestionLocationId: string;
+  try {
+    suggestionLocationId =
+      (await getIntakeLocationId(context.supabase, suggestion.intake_id)) ??
+      (await getDefaultLocationId(context.supabase));
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load intake location."
+    );
+  }
+
   if (suggestion.status === "rejected") {
     return toActionError("Rejected suggestions cannot be approved.");
   }
@@ -430,20 +442,11 @@ export async function approveSlottingSuggestion(
       return toActionError("Student is already assigned to a different tutor.");
     }
 
-    let defaultLocationId: string;
-    try {
-      defaultLocationId = await getDefaultLocationId(context.supabase);
-    } catch (error) {
-      return toActionError(
-        error instanceof Error ? error.message : "Unable to load default location."
-      );
-    }
-
     const { data: operatingHoursRows, error: operatingHoursError } =
       await context.supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
-        .eq("location_id", defaultLocationId);
+        .eq("location_id", suggestionLocationId);
 
     if (operatingHoursError) {
       return toActionError("Unable to validate operating hours.");
@@ -667,6 +670,7 @@ export async function approveSlottingSuggestion(
       created_by: context.user.id,
       status: "scheduled",
       session_date: suggestion.session_date,
+      location_id: suggestionLocationId,
       start_time: suggestion.start_time,
       end_time: suggestion.end_time,
       recurrence_rule: null,
