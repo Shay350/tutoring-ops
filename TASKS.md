@@ -293,7 +293,7 @@ GOAL:
 Support multiple physical/virtual locations inside the single organization:
 intake, scheduling, and access controls can be location-aware.
 
-STATUS: NOT STARTED
+STATUS: COMPLETE (2026-02-24)
 
 ---
 
