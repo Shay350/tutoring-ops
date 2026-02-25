@@ -4,6 +4,16 @@ import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_ROOT = process.cwd();
 const SEED_DIR = path.join(PROJECT_ROOT, "seed");
+const VS10_LOCATION_NAMES = ["Milton", "Mississauga", "Oakville"];
+const VS10_MANAGER_LOCATION_ASSIGNMENTS = {
+  "00000000-0000-0000-0000-000000000001": ["Milton"],
+  "00000000-0000-0000-0000-000000000006": ["Mississauga"],
+  "00000000-0000-0000-0000-000000000007": [
+    "Milton",
+    "Mississauga",
+    "Oakville",
+  ],
+};
 
 function loadEnvFile(filePath) {
   return fs
@@ -147,6 +157,64 @@ async function upsertRows(supabase, table, rows, onConflict = "id") {
   }
 
   console.log(`${table}: ${rows.length} rows`);
+}
+
+async function ensureVs10LocationsAndManagerAssignments(supabase) {
+  const locationRows = VS10_LOCATION_NAMES.map((name) => ({
+    name,
+    notes: `Seeded for local VS10 location testing (${name}).`,
+    active: true,
+  }));
+  await upsertRows(supabase, "locations", locationRows, "name");
+
+  const { data: locations, error: locationsError } = await supabase
+    .from("locations")
+    .select("id, name")
+    .in("name", VS10_LOCATION_NAMES);
+
+  if (locationsError) {
+    throw new Error(`Failed to load VS10 locations: ${locationsError.message}`);
+  }
+
+  const locationIdByName = new Map(
+    (locations ?? []).map((location) => [location.name, location.id])
+  );
+
+  const managerIds = Object.keys(VS10_MANAGER_LOCATION_ASSIGNMENTS);
+  const { error: clearError } = await supabase
+    .from("profile_locations")
+    .delete()
+    .in("profile_id", managerIds);
+
+  if (clearError) {
+    throw new Error(
+      `Failed to clear manager location assignments: ${clearError.message}`
+    );
+  }
+
+  const assignmentRows = [];
+  for (const managerId of managerIds) {
+    const locationNames = VS10_MANAGER_LOCATION_ASSIGNMENTS[managerId] ?? [];
+    for (const locationName of locationNames) {
+      const locationId = locationIdByName.get(locationName);
+      if (!locationId) {
+        throw new Error(`Missing seeded location id for ${locationName}.`);
+      }
+      assignmentRows.push({
+        profile_id: managerId,
+        location_id: locationId,
+      });
+    }
+  }
+
+  await upsertRows(
+    supabase,
+    "profile_locations",
+    assignmentRows,
+    "profile_id,location_id"
+  );
+
+  return Array.from(locationIdByName.values());
 }
 
 async function listAllAuthUsers(supabase) {
@@ -406,6 +474,9 @@ async function main() {
     "membership_adjustments",
     await readSeedFile("membership_adjustments_seed.csv")
   );
+  const seededLocationIds = await ensureVs10LocationsAndManagerAssignments(
+    supabase
+  );
   const { data: defaultLocationId, error: defaultLocationError } =
     await supabase.rpc("default_location_id");
   if (defaultLocationError || !defaultLocationId) {
@@ -415,10 +486,16 @@ async function main() {
   }
 
   const operatingHoursSeed = await readSeedFile("operating_hours_seed.csv");
-  const operatingHoursWithLocation = operatingHoursSeed.map((row) => ({
-    ...row,
-    location_id: defaultLocationId,
-  }));
+  const operatingHoursLocationIds = Array.from(
+    new Set([defaultLocationId, ...seededLocationIds])
+  );
+  const operatingHoursWithLocation = operatingHoursLocationIds.flatMap(
+    (locationId) =>
+      operatingHoursSeed.map((row) => ({
+        ...row,
+        location_id: locationId,
+      }))
+  );
 
   await upsertRows(
     supabase,
