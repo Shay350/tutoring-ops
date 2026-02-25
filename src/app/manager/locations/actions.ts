@@ -26,14 +26,33 @@ export async function createLocation(
     return toActionError("Location name is required.");
   }
 
-  const { error } = await context.supabase.from("locations").insert({
-    name,
-    notes: notes || null,
-    active,
-  });
+  const { data: createdLocation, error: createError } = await context.supabase
+    .from("locations")
+    .insert({
+      name,
+      notes: notes || null,
+      active,
+    })
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (createError || !createdLocation) {
     return toActionError("Unable to create location.");
+  }
+
+  const { error: linkError } = await context.supabase
+    .from("profile_locations")
+    .upsert(
+      {
+        profile_id: context.user.id,
+        location_id: createdLocation.id,
+      },
+      { onConflict: "profile_id,location_id" }
+    );
+
+  if (linkError) {
+    await context.supabase.from("locations").delete().eq("id", createdLocation.id);
+    return toActionError("Unable to assign manager access to new location.");
   }
 
   revalidatePath("/manager/locations");
