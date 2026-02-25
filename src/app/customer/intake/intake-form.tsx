@@ -17,6 +17,7 @@ type IntakeFormProps = {
 
 export default function IntakeForm({ action, locations }: IntakeFormProps) {
   const [state, formAction] = useFormState(action, initialActionState);
+  const hasLocations = locations.length > 0;
 
   return (
     <Card>
@@ -89,15 +90,31 @@ export default function IntakeForm({ action, locations }: IntakeFormProps) {
               name="location_id"
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               required
+              disabled={!hasLocations}
               data-testid="intake-location-select"
             >
-              <option value="">Select a location</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
+              {hasLocations ? (
+                <>
+                  <option value="">Select a location</option>
+                  {locations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name}
+                    </option>
+                  ))}
+                </>
+              ) : (
+                <option value="">No active locations available</option>
+              )}
             </select>
+            {!hasLocations ? (
+              <p
+                className="text-xs text-amber-700"
+                data-testid="intake-location-unavailable"
+              >
+                Intake submissions are temporarily unavailable. Please contact your
+                manager to activate a location.
+              </p>
+            ) : null}
           </div>
           {state.status !== "idle" ? (
             <p
@@ -113,7 +130,7 @@ export default function IntakeForm({ action, locations }: IntakeFormProps) {
             </p>
           ) : null}
           <div className="flex justify-end">
-            <Button type="submit" data-testid="intake-submit">
+            <Button type="submit" data-testid="intake-submit" disabled={!hasLocations}>
               Submit intake
             </Button>
           </div>
