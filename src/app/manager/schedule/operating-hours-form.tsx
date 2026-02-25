@@ -38,9 +38,11 @@ function FormMessage({
 
 export default function OperatingHoursForm({
   hours,
+  locationId,
   disabledReason,
 }: {
   hours: OperatingHoursRow[];
+  locationId: string | null;
   disabledReason?: string;
 }) {
   const [state, formAction] = useFormState(
@@ -68,6 +70,7 @@ export default function OperatingHoursForm({
           className="space-y-4"
           data-testid="operating-hours-form"
         >
+          <input type="hidden" name="location_id" value={locationId ?? ""} />
           <div className="space-y-3">
             {ordered.map((row) => {
               const prefix = `weekday_${row.weekday}`;

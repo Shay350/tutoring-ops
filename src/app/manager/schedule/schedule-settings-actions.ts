@@ -28,13 +28,16 @@ export async function updateOperatingHours(
     return toActionError(context.error);
   }
 
-  let defaultLocationId: string;
-  try {
-    defaultLocationId = await getDefaultLocationId(context.supabase);
-  } catch (error) {
-    return toActionError(
-      error instanceof Error ? error.message : "Unable to load default location."
-    );
+  const formLocationId = String(formData.get("location_id") ?? "").trim();
+  let locationId = formLocationId;
+  if (!locationId) {
+    try {
+      locationId = await getDefaultLocationId(context.supabase);
+    } catch (error) {
+      return toActionError(
+        error instanceof Error ? error.message : "Unable to load default location."
+      );
+    }
   }
 
   const weekdaysRaw = formData.getAll("weekdays").map((value) => String(value));
@@ -59,7 +62,7 @@ export async function updateOperatingHours(
 
     if (isClosed) {
       payload.push({
-        location_id: defaultLocationId,
+        location_id: locationId,
         weekday,
         is_closed: true,
         open_time: null,
@@ -74,7 +77,7 @@ export async function updateOperatingHours(
     }
 
     payload.push({
-      location_id: defaultLocationId,
+      location_id: locationId,
       weekday,
       is_closed: false,
       open_time: openTime,

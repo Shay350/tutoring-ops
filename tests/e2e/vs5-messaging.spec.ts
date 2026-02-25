@@ -31,7 +31,7 @@ async function createStudentIntake(page: Page, studentName: string) {
   await page.getByTestId("intake-subjects").fill("Math");
   await page.getByTestId("intake-availability").fill("Weekdays after 5pm");
   await page.getByTestId("intake-goals").fill("Improve grades");
-  await page.getByTestId("intake-location").fill("Seattle, WA");
+  await page.getByTestId("intake-location-select").selectOption({ index: 1 });
   await page.getByTestId("intake-submit").click();
   await expect(page.getByTestId("intake-success")).toBeVisible();
 }
@@ -143,7 +143,7 @@ test.describe("@smoke VS5 messaging", () => {
     await page.getByTestId("intake-subjects").fill("English");
     await page.getByTestId("intake-availability").fill("Weekends");
     await page.getByTestId("intake-goals").fill("Writing practice");
-    await page.getByTestId("intake-location").fill("Denver, CO");
+    await page.getByTestId("intake-location-select").selectOption({ index: 1 });
     await page.getByTestId("intake-submit").click();
     await expect(page.getByTestId("intake-success")).toBeVisible();
     await page.context().clearCookies();
