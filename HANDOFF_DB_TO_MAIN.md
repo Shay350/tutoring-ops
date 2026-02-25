@@ -138,6 +138,7 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
 - `public.default_location_id() -> uuid` (returns the id for location `name='Default'`)
 - `public.has_location(uid uuid, location_id uuid) -> boolean` (checks `profile_locations`)
 - `public.set_sessions_location_id() -> trigger` (ensures inserts/updates keep session location aligned with student intake)
+- `public.sync_profile_location_assignments() -> trigger` (auto-assigns all locations to new non-pending manager/tutor profiles)
 
 ## RLS policy summary (required)
 - Default deny (RLS enabled on all touched tables)

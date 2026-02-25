@@ -147,6 +147,32 @@ where p.role in ('manager', 'tutor')
   and p.pending = false
 on conflict (profile_id, location_id) do nothing;
 
+create or replace function public.sync_profile_location_assignments()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role in ('manager', 'tutor') and new.pending = false then
+    insert into public.profile_locations (profile_id, location_id)
+    select new.id, l.id
+    from public.locations l
+    on conflict (profile_id, location_id) do nothing;
+  else
+    delete from public.profile_locations
+    where profile_id = new.id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_profile_location_assignments on public.profiles;
+create trigger sync_profile_location_assignments
+  after insert or update of role, pending on public.profiles
+  for each row execute function public.sync_profile_location_assignments();
+
 -- 6) Location-ize intakes (keep legacy location text for history/backfill)
 
 alter table public.intakes
@@ -206,7 +232,9 @@ security definer
 set search_path = public
 as $$
 begin
-  if new.location_id is null then
+  if tg_op = 'INSERT'
+     or new.location_id is null
+     or new.student_id is distinct from old.student_id then
     select i.location_id
       into new.location_id
       from public.students st

@@ -15,7 +15,6 @@ import {
 import { initialActionState } from "@/lib/action-state";
 import { formatDate, formatDateTime, formatTimeRange } from "@/lib/format";
 import { deriveShortCodeCandidates, isUuid } from "@/lib/ids";
-import { getDefaultLocationId } from "@/lib/locations";
 import {
   buildSchedulerSlots,
 } from "@/lib/intake-scheduler";
@@ -73,7 +72,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const intakeLookup = supabase
     .from("intakes")
     .select(
-      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
+      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, location_id, created_at"
     );
 
   const intakeLookupRaw = String(intakeId ?? "").trim();
@@ -97,13 +96,6 @@ export default async function IntakeDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  let defaultLocationId: string | null = null;
-  try {
-    defaultLocationId = await getDefaultLocationId(supabase);
-  } catch {
-    defaultLocationId = null;
-  }
-
   const { data: student } = await supabase
     .from("students")
     .select("id, full_name, status, created_at")
@@ -120,7 +112,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
-        .match(defaultLocationId ? { location_id: defaultLocationId } : {})
+        .eq("location_id", intake.location_id)
         .order("weekday", { ascending: true }),
       supabase
         .from("slotting_suggestions")
