@@ -104,3 +104,69 @@ Filled for PR1 (DB/RLS): slotting suggestions table + manager-only RLS.
 - Approving a second suggestion with the same `(tutor_id, session_date, start_time, end_time)` will fail due to the partial unique index.
 - Suggested generator behavior: insert with upsert on `(intake_id, tutor_id, session_date, start_time, end_time)` and never overwrite approved rows.
 - Keep "reasons" stable and deterministic for debuggability.
+
+============================================================
+
+# DB Handoff to Main — VS10
+
+Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
+
+## Migration files
+- `supabase/migrations/20260224000000_vs10_locations.sql`
+
+## Tables and columns (final)
+- `public.locations`
+  - `id uuid pk default gen_random_uuid()`
+  - `name text not null unique`
+  - `notes text null`
+  - `active boolean not null default true`
+  - `created_at timestamptz not null default now()`
+- `public.profile_locations`
+  - `profile_id uuid not null -> auth.users (on delete cascade)`
+  - `location_id uuid not null -> public.locations (on delete cascade)`
+  - `created_at timestamptz not null default now()`
+  - `unique(profile_id, location_id)`
+- `public.intakes`
+  - `location_id uuid not null -> public.locations` (legacy `location text` retained for history/backfill)
+- `public.sessions`
+  - `location_id uuid not null -> public.locations` (derived by trigger from `student_id -> intake.location_id`, fallback `Default`)
+- `public.operating_hours`
+  - `location_id uuid not null -> public.locations`
+  - uniqueness updated from `unique(weekday)` to `unique(location_id, weekday)`
+
+## Helper SQL functions
+- `public.default_location_id() -> uuid` (returns the id for location `name='Default'`)
+- `public.has_location(uid uuid, location_id uuid) -> boolean` (checks `profile_locations`)
+- `public.set_sessions_location_id() -> trigger` (ensures inserts/updates keep session location aligned with student intake)
+- `public.sync_profile_location_assignments() -> trigger` (auto-assigns all locations to new non-pending manager/tutor profiles)
+
+## RLS policy summary (required)
+- Default deny (RLS enabled on all touched tables)
+- `locations`
+  - Managers: insert/update/delete
+  - Managers/Tutors: select only locations assigned in `profile_locations`
+  - Customers: select only locations tied to their own intake rows
+- `profile_locations`
+  - Managers: manage (all actions)
+  - Users: can read their own assignments
+- Location scoping added (manager/tutor access only) for:
+  - `intakes`, `students`, `assignments`, `sessions`, `slotting_suggestions`, `operating_hours`
+  - Customer policies remain constrained to “own rows” (no cross-customer access broadened).
+
+## Backfill notes
+- Inserts a `Default` location (idempotent).
+- Creates locations from distinct legacy `intakes.location` strings using `initcap(lower(trim(location)))` for dedupe.
+- Backfills:
+  - `intakes.location_id` by mapping legacy `intakes.location` → `locations.name`, falling back to `Default`.
+  - `sessions.location_id` via `sessions.student_id -> students.intake_id -> intakes.location_id`, falling back to `Default`.
+  - `operating_hours.location_id` set to `Default` for legacy rows, then copied to every other location.
+- New writes to `sessions` do not rely on a `location_id` default; a trigger derives `location_id` from student intake to prevent drift.
+- To preserve pre-VS10 behavior, assigns all existing non-pending managers/tutors to all locations in `profile_locations` (can be tightened later via explicit admin assignment).
+
+## How to verify
+- Apply migrations in a dev DB (`supabase db reset` or SQL editor).
+- Confirm `locations` has `Default` plus normalized legacy values from `intakes.location`.
+- Confirm `operating_hours` has 7 weekday rows per location and uniqueness is enforced on `(location_id, weekday)`.
+- As manager with one location assignment, verify location-scoped reads/writes on `intakes`, `sessions`, `operating_hours`, and `slotting_suggestions`.
+- As tutor with one location assignment, verify reads are limited to assigned-location `students`/`assignments`/`sessions`.
+- As customer, verify visibility remains limited to own rows and own linked locations.

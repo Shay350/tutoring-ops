@@ -406,11 +406,25 @@ async function main() {
     "membership_adjustments",
     await readSeedFile("membership_adjustments_seed.csv")
   );
+  const { data: defaultLocationId, error: defaultLocationError } =
+    await supabase.rpc("default_location_id");
+  if (defaultLocationError || !defaultLocationId) {
+    throw new Error(
+      "Unable to seed operating hours: default location missing. Apply the VS10 migration."
+    );
+  }
+
+  const operatingHoursSeed = await readSeedFile("operating_hours_seed.csv");
+  const operatingHoursWithLocation = operatingHoursSeed.map((row) => ({
+    ...row,
+    location_id: defaultLocationId,
+  }));
+
   await upsertRows(
     supabase,
     "operating_hours",
-    await readSeedFile("operating_hours_seed.csv"),
-    "weekday"
+    operatingHoursWithLocation,
+    "location_id,weekday"
   );
   await upsertRows(
     supabase,

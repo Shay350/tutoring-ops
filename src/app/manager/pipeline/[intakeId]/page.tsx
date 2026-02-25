@@ -72,7 +72,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   const intakeLookup = supabase
     .from("intakes")
     .select(
-      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, created_at"
+      "id, customer_id, status, student_name, student_grade, subjects, availability, goals, location, location_id, created_at"
     );
 
   const intakeLookupRaw = String(intakeId ?? "").trim();
@@ -112,6 +112,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       supabase
         .from("operating_hours")
         .select("weekday, is_closed, open_time, close_time")
+        .eq("location_id", intake.location_id)
         .order("weekday", { ascending: true }),
       supabase
         .from("slotting_suggestions")

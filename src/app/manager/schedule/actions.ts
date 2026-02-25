@@ -23,6 +23,7 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
+import { getDefaultLocationId, getStudentLocationId } from "@/lib/locations";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 
 function parseAssignmentPair(pair: string): { studentId: string; tutorId: string } {
@@ -135,10 +136,22 @@ export async function createRecurringSessions(
 
   const recurrenceRule = `weekly:${weekdays.join(",")}`;
 
+  let locationIdForValidation: string;
+  try {
+    locationIdForValidation =
+      (await getStudentLocationId(context.supabase, studentId)) ??
+      (await getDefaultLocationId(context.supabase));
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load session location."
+    );
+  }
+
   const { data: operatingHoursRows, error: operatingHoursError } =
     await context.supabase
       .from("operating_hours")
-      .select("weekday, is_closed, open_time, close_time");
+      .select("weekday, is_closed, open_time, close_time")
+      .eq("location_id", locationIdForValidation);
 
   if (operatingHoursError) {
     return toActionError("Unable to validate operating hours for this schedule.");
@@ -215,6 +228,7 @@ export async function createRecurringSessions(
       created_by: context.user.id,
       status: status || "scheduled",
       session_date: date,
+      location_id: locationIdForValidation,
       start_time: startTime,
       end_time: endTime,
       recurrence_rule: recurrenceRule,

@@ -9,8 +9,10 @@ import {
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
 import { validateTimeRange } from "@/lib/schedule";
+import { getDefaultLocationId } from "@/lib/locations";
 
 type OperatingHoursUpsert = {
+  location_id: string;
   weekday: number;
   is_closed: boolean;
   open_time: string | null;
@@ -24,6 +26,15 @@ export async function updateOperatingHours(
   const context = await getActionContext("manager");
   if ("error" in context) {
     return toActionError(context.error);
+  }
+
+  let defaultLocationId: string;
+  try {
+    defaultLocationId = await getDefaultLocationId(context.supabase);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to load default location."
+    );
   }
 
   const weekdaysRaw = formData.getAll("weekdays").map((value) => String(value));
@@ -48,6 +59,7 @@ export async function updateOperatingHours(
 
     if (isClosed) {
       payload.push({
+        location_id: defaultLocationId,
         weekday,
         is_closed: true,
         open_time: null,
@@ -62,6 +74,7 @@ export async function updateOperatingHours(
     }
 
     payload.push({
+      location_id: defaultLocationId,
       weekday,
       is_closed: false,
       open_time: openTime,
@@ -71,7 +84,7 @@ export async function updateOperatingHours(
 
   const { error } = await context.supabase
     .from("operating_hours")
-    .upsert(payload, { onConflict: "weekday" });
+    .upsert(payload, { onConflict: "location_id,weekday" });
 
   if (error) {
     return toActionError("Unable to save operating hours. Is the VS8 migration applied?");
@@ -80,4 +93,3 @@ export async function updateOperatingHours(
   revalidatePath("/manager/schedule");
   return toActionSuccess("Operating hours saved.");
 }
-
