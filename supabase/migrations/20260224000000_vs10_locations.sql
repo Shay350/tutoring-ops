@@ -106,20 +106,6 @@ create policy "Managers and tutors can read assigned locations"
     and public.has_location(auth.uid(), locations.id)
   );
 
-drop policy if exists "Customers can read own locations" on public.locations;
-create policy "Customers can read own locations"
-  on public.locations
-  for select
-  using (
-    public.has_role(auth.uid(), 'customer')
-    and exists (
-      select 1
-      from public.intakes i
-      where i.customer_id = auth.uid()
-        and i.location_id = locations.id
-    )
-  );
-
 -- 5) Backfill: seed locations and assignments
 
 -- Ensure "Default" exists (idempotent).
@@ -196,6 +182,20 @@ where location_id is null;
 alter table public.intakes
   alter column location_id set default public.default_location_id(),
   alter column location_id set not null;
+
+drop policy if exists "Customers can read own locations" on public.locations;
+create policy "Customers can read own locations"
+  on public.locations
+  for select
+  using (
+    public.has_role(auth.uid(), 'customer')
+    and exists (
+      select 1
+      from public.intakes i
+      where i.customer_id = auth.uid()
+        and i.location_id = locations.id
+    )
+  );
 
 create index if not exists intakes_location_id_idx
   on public.intakes (location_id);

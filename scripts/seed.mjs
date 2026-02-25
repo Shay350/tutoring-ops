@@ -160,6 +160,14 @@ async function upsertRows(supabase, table, rows, onConflict = "id") {
 }
 
 async function ensureVs10LocationsAndManagerAssignments(supabase) {
+  const { data: defaultLocationId, error: defaultLocationError } =
+    await supabase.rpc("default_location_id");
+  if (defaultLocationError || !defaultLocationId) {
+    throw new Error(
+      "VS10 migration is not applied. Run `supabase db reset` (or apply `supabase/migrations/20260224000000_vs10_locations.sql`) before seeding."
+    );
+  }
+
   const locationRows = VS10_LOCATION_NAMES.map((name) => ({
     name,
     notes: `Seeded for local VS10 location testing (${name}).`,
@@ -214,7 +222,10 @@ async function ensureVs10LocationsAndManagerAssignments(supabase) {
     "profile_id,location_id"
   );
 
-  return Array.from(locationIdByName.values());
+  return {
+    defaultLocationId: String(defaultLocationId),
+    locationIds: Array.from(locationIdByName.values()),
+  };
 }
 
 async function listAllAuthUsers(supabase) {
@@ -474,16 +485,10 @@ async function main() {
     "membership_adjustments",
     await readSeedFile("membership_adjustments_seed.csv")
   );
-  const seededLocationIds = await ensureVs10LocationsAndManagerAssignments(
+  const { defaultLocationId, locationIds: seededLocationIds } =
+    await ensureVs10LocationsAndManagerAssignments(
     supabase
   );
-  const { data: defaultLocationId, error: defaultLocationError } =
-    await supabase.rpc("default_location_id");
-  if (defaultLocationError || !defaultLocationId) {
-    throw new Error(
-      "Unable to seed operating hours: default location missing. Apply the VS10 migration."
-    );
-  }
 
   const operatingHoursSeed = await readSeedFile("operating_hours_seed.csv");
   const operatingHoursLocationIds = Array.from(
@@ -491,10 +496,14 @@ async function main() {
   );
   const operatingHoursWithLocation = operatingHoursLocationIds.flatMap(
     (locationId) =>
-      operatingHoursSeed.map((row) => ({
-        ...row,
-        location_id: locationId,
-      }))
+      operatingHoursSeed.map((row) => {
+        const rest = { ...row };
+        delete rest.id;
+        return {
+          ...rest,
+          location_id: locationId,
+        };
+      })
   );
 
   await upsertRows(
