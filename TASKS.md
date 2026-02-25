@@ -13,7 +13,7 @@ GLOBAL CONSTRAINTS
 ==================
 
 - Single organization internal tool
-- Roles: Manager, Tutor, Customer
+- Roles: Admin, Manager, Tutor, Customer
 - Supabase Auth + Postgres + RLS required for all data
 - No public self-serve onboarding (manager invites only)
 - No automated payments
@@ -325,7 +325,78 @@ STATUS: COMPLETE (2026-02-24)
 - E2E covers at least 2 locations with correct isolation
 
 ============================================================
-VERTICAL SLICE 11 — Public Marketing Site (No Public Onboarding)
+VERTICAL SLICE 11 — True Admin Role + Admin Portal
+==================================================
+
+GOAL:
+Introduce a first-class Admin role (separate from Manager) with org-wide administration,
+while keeping manager/tutor/customer operations and location-aware controls intact.
+
+STATUS: IN PROGRESS (2026-02-25)
+
+---
+
+## VS11 — Multi-Agent Execution
+
+Recommended stacked PR flow:
+
+- PR 1: DB/RLS + role model updates (Admin role introduced; strict least privilege)
+- PR 2: App/Auth/Admin portal updates (routing, guards, admin UI)
+- PR 3: QA/tests/seed updates (unit + e2e + local seed fixtures)
+
+Agent role boundaries:
+
+- DB/RLS Agent:
+  - Owns migrations, SQL functions, policies, and schema constraints
+  - Must not modify app/UI files except migration-related tests if needed
+
+- App/Auth Agent:
+  - Owns role mapping, route guards, `/admin/**` pages, and manager/admin action boundaries
+  - Must not modify schema/migrations
+
+- QA/Seed Agent:
+  - Owns tests, test fixtures, and seed hardening
+  - Must not modify schema or core feature logic
+
+---
+
+## VS11 — Capabilities
+
+- New role model:
+  - `admin` exists as an independent role (not an alias of manager)
+  - managers remain operational users
+- Admin portal:
+  - `/admin/**` route space with admin-only access
+  - admin can manage locations and role/location memberships
+  - invite authority is admin-only
+- Manager behavior:
+  - managers can still assign customer operational records via intake/student location flows
+  - managers are strictly scoped to their assigned locations
+- Security:
+  - RLS includes admin org-wide authority where appropriate
+  - no customer data leakage; customer self-access remains least privilege
+
+---
+
+## VS11 — Constraints
+
+- Single-org only (still not multi-tenant orgs)
+- Schema changes must include RLS (default deny; least privilege)
+- No automatic production conversion of all managers to admin
+- No merge with failing tests
+
+---
+
+## VS11 — Exit Criteria
+
+- Admin role works end-to-end (auth, routing, RLS, and UI)
+- Managers are location-scoped for operational access
+- Admin-only invite/location-membership authority is enforced
+- `supabase db reset`, `npm run seed`, and `npm run test:all` pass
+- E2E demonstrates admin/manager boundary and location isolation
+
+============================================================
+VERTICAL SLICE 12 — Public Marketing Site (No Public Onboarding)
 ===============================================================
 
 GOAL:
@@ -335,7 +406,7 @@ STATUS: NOT STARTED
 
 ---
 
-## VS11 — Pages
+## VS12 — Pages
 
 - Home
 - About Us
@@ -345,20 +416,20 @@ STATUS: NOT STARTED
 
 ---
 
-## VS11 — Constraints
+## VS12 — Constraints
 
 - No public self-serve onboarding (accounts still created via manager invite)
 - Keep app area behind auth; public pages are read-only
 
 ---
 
-## VS11 — Exit Criteria
+## VS12 — Exit Criteria
 
 - Public pages render unauthenticated
 - Authenticated app routes remain protected and role-guarded
 
 ============================================================
-VERTICAL SLICE 12 — Customer “Request Access” (Public Page → Manager Invite)
+VERTICAL SLICE 13 — Customer “Request Access” (Public Page → Manager Invite)
 ==========================================================================
 
 GOAL:
@@ -369,7 +440,7 @@ STATUS: NOT STARTED
 
 ---
 
-## VS12 — Capabilities
+## VS13 — Capabilities
 
 - Public page: “Request access” (no auth) to submit:
   - parent name
@@ -385,7 +456,7 @@ STATUS: NOT STARTED
 
 ---
 
-## VS12 — Constraints
+## VS13 — Constraints
 
 - Must not create a customer account automatically (still manager-invites-only)
 - Abuse protection for public form (rate limit + basic bot mitigation)
@@ -393,14 +464,14 @@ STATUS: NOT STARTED
 
 ---
 
-## VS12 — Exit Criteria
+## VS13 — Exit Criteria
 
 - Requests reliably captured and visible to managers
 - Invites issued only by managers
 - E2E test covers request submit → manager invite flow
 
 ============================================================
-VERTICAL SLICE 13 — Stripe Payment Links (Session Packs) [BLOCKED BY SPEC]
+VERTICAL SLICE 14 — Stripe Payment Links (Session Packs) [BLOCKED BY SPEC]
 =======================================================================
 
 GOAL:
@@ -411,7 +482,7 @@ STATUS: BLOCKED (SPEC.md says “No payments”)
 
 ---
 
-## VS13 — Pre-Work (Unblock)
+## VS14 — Pre-Work (Unblock)
 
 - Update SPEC.md Non-Goals to allow payments via Stripe (define scope explicitly)
 - Decide whether donations share the same Stripe account/workflow or remain external-only
@@ -419,7 +490,7 @@ STATUS: BLOCKED (SPEC.md says “No payments”)
 
 ---
 
-## VS13 — Capabilities (If Unblocked)
+## VS14 — Capabilities (If Unblocked)
 
 - Manager can generate a Stripe payment link for a customer:
   - adjustable quantity for session packs
@@ -433,7 +504,7 @@ STATUS: BLOCKED (SPEC.md says “No payments”)
 
 ---
 
-## VS13 — Constraints
+## VS14 — Constraints
 
 - Stripe-hosted checkout only; no card data stored in app
 - Webhooks must be verified and idempotent
@@ -441,7 +512,7 @@ STATUS: BLOCKED (SPEC.md says “No payments”)
 
 ---
 
-## VS13 — Exit Criteria
+## VS14 — Exit Criteria
 
 - Stripe events reliably reconcile to membership hours
 - No double-application of credits/adjustments (idempotent)
