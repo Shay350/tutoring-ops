@@ -23,7 +23,7 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
-import { getLocationIdForStudent } from "@/lib/locations";
+import { getLocationIdForStudent, requireManagerLocationAccess } from "@/lib/locations";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 
 function parseAssignmentPair(pair: string): { studentId: string; tutorId: string } {
@@ -139,6 +139,7 @@ export async function createRecurringSessions(
   let sessionLocationId: string;
   try {
     sessionLocationId = await getLocationIdForStudent(context.supabase, studentId);
+    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load student location."
