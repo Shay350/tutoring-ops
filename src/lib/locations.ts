@@ -49,6 +49,55 @@ export async function listLocations(
   }));
 }
 
+export async function listManagerLocationIds(
+  supabase: SupabaseClient,
+  managerId: string
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("profile_locations")
+    .select("location_id")
+    .eq("profile_id", managerId);
+
+  if (error) {
+    throw new Error("Unable to load manager locations.");
+  }
+
+  return new Set(
+    (data ?? [])
+      .map((row) => row.location_id)
+      .filter((value): value is string => Boolean(value))
+  );
+}
+
+export async function listLocationsForManager(
+  supabase: SupabaseClient,
+  managerId: string,
+  options?: { activeOnly?: boolean }
+): Promise<LocationOption[]> {
+  const [locations, locationIds] = await Promise.all([
+    listLocations(supabase, options),
+    listManagerLocationIds(supabase, managerId),
+  ]);
+
+  return locations.filter((location) => locationIds.has(location.id));
+}
+
+export async function requireManagerLocationAccess(
+  supabase: SupabaseClient,
+  managerId: string,
+  locationId: string
+): Promise<void> {
+  if (!locationId) {
+    throw new Error("Missing location context.");
+  }
+
+  const allowedLocationIds = await listManagerLocationIds(supabase, managerId);
+
+  if (!allowedLocationIds.has(locationId)) {
+    throw new Error("You do not have access to this location.");
+  }
+}
+
 export async function getLocationIdForIntake(
   supabase: SupabaseClient,
   intakeId: string

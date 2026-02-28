@@ -62,6 +62,8 @@ vi.mock("@/lib/auth-utils", () => ({
 vi.mock("@/lib/roles", () => ({
   resolveRolePath: (role?: string | null) => {
     switch (role) {
+      case "admin":
+        return "/admin";
       case "manager":
         return "/manager";
       case "tutor":

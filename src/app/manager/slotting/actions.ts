@@ -10,7 +10,10 @@ import {
   mapOperatingHoursByWeekday,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
-import { getLocationIdForIntake } from "@/lib/locations";
+import {
+  getLocationIdForIntake,
+  requireManagerLocationAccess,
+} from "@/lib/locations";
 import { addDaysUtc, formatDateKey, parseTimeToMinutes } from "@/lib/schedule";
 import { generateUniqueShortCode } from "@/lib/short-codes";
 import {
@@ -136,6 +139,7 @@ export async function generateSlottingSuggestionsForIntake(
     intakeLocationId = intake.location_id
       ? String(intake.location_id)
       : await getLocationIdForIntake(context.supabase, intakeId);
+    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load intake location."
@@ -289,6 +293,18 @@ export async function rejectSlottingSuggestion(
     return toActionError("Suggestion not found.");
   }
 
+  try {
+    const intakeLocationId = await getLocationIdForIntake(
+      context.supabase,
+      suggestion.intake_id
+    );
+    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
+  }
+
   if (suggestion.status === "rejected") {
     if (intakeId) {
       revalidatePath(`/manager/pipeline/${intakeId}`);
@@ -396,6 +412,18 @@ export async function approveSlottingSuggestion(
 
   if (suggestionError || !suggestion) {
     return toActionError("Suggestion not found.");
+  }
+
+  try {
+    const intakeLocationId = await getLocationIdForIntake(
+      context.supabase,
+      suggestion.intake_id
+    );
+    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
   }
 
   const resolvedIntakeId = intakeId || suggestion.intake_id;

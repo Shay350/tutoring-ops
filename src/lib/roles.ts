@@ -1,4 +1,5 @@
 export const ROLE_PATHS = {
+  admin: "/admin",
   customer: "/customer",
   tutor: "/tutor",
   manager: "/manager",

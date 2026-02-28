@@ -13,7 +13,11 @@ import {
   type OperatingHoursRow,
   weekdayFromDateKey,
 } from "@/lib/operating-hours";
-import { getLocationIdForStudent } from "@/lib/locations";
+import {
+  getLocationIdForIntake,
+  getLocationIdForStudent,
+  requireManagerLocationAccess,
+} from "@/lib/locations";
 import { computeBillingDecision } from "@/lib/membership";
 import {
   addDaysUtc,
@@ -120,7 +124,7 @@ export async function approveIntake(
   const [intakeResult, studentResult] = await Promise.all([
     context.supabase
       .from("intakes")
-      .select("id, customer_id, student_name, status")
+      .select("id, customer_id, student_name, status, location_id")
       .eq("id", intakeId)
       .maybeSingle(),
     context.supabase
@@ -136,6 +140,17 @@ export async function approveIntake(
 
   if (studentResult.error) {
     return toActionError("Unable to verify existing student.");
+  }
+
+  try {
+    const intakeLocationId = intakeResult.data.location_id
+      ? String(intakeResult.data.location_id)
+      : await getLocationIdForIntake(context.supabase, intakeId);
+    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
   }
 
   if (studentResult.data) {
@@ -210,6 +225,15 @@ export async function assignTutor(
 
   if (!studentId || !tutorId) {
     return toActionError("Student and tutor are required.");
+  }
+
+  try {
+    const studentLocationId = await getLocationIdForStudent(context.supabase, studentId);
+    await requireManagerLocationAccess(context.supabase, context.user.id, studentLocationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
   }
 
   const [assignmentResult, tutorResult] = await Promise.all([
@@ -318,6 +342,7 @@ export async function createSession(
   let sessionLocationId: string;
   try {
     sessionLocationId = await getLocationIdForStudent(context.supabase, studentId);
+    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load student location."
@@ -568,12 +593,23 @@ export async function completeSession(
 
   const { data: session, error: sessionError } = await context.supabase
     .from("sessions")
-    .select("id, student_id, status, billed_to_membership")
+    .select("id, student_id, status, billed_to_membership, location_id")
     .eq("id", sessionId)
     .maybeSingle();
 
   if (sessionError || !session) {
     return toActionError("Session not found.");
+  }
+
+  try {
+    const sessionLocationId = session.location_id
+      ? String(session.location_id)
+      : await getLocationIdForStudent(context.supabase, session.student_id);
+    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
   }
 
   let sessionForBilling: SessionBillingRow = session;

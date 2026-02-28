@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions";
 import type { ActionState } from "@/lib/action-state";
 import { validateTimeRange } from "@/lib/schedule";
-import { getDefaultLocationId } from "@/lib/locations";
+import { getDefaultLocationId, requireManagerLocationAccess } from "@/lib/locations";
 
 type OperatingHoursUpsert = {
   location_id: string;
@@ -38,6 +38,14 @@ export async function updateOperatingHours(
         error instanceof Error ? error.message : "Unable to load default location."
       );
     }
+  }
+
+  try {
+    await requireManagerLocationAccess(context.supabase, context.user.id, locationId);
+  } catch (error) {
+    return toActionError(
+      error instanceof Error ? error.message : "Unable to validate location access."
+    );
   }
 
   const weekdaysRaw = formData.getAll("weekdays").map((value) => String(value));
