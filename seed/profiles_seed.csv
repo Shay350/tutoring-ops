@@ -1,4 +1,5 @@
 id,email,role,full_name,pending,created_at
+00000000-0000-0000-0000-000000000018,admin@tutorops.local,admin,Ari Admin,false,2026-02-01T08:59:00Z
 00000000-0000-0000-0000-000000000001,manager@tutorops.local,manager,Morgan Manager,false,2026-02-01T09:00:00Z
 00000000-0000-0000-0000-000000000006,manager2@tutorops.local,manager,Casey Director,false,2026-02-01T09:01:00Z
 00000000-0000-0000-0000-000000000007,manager3@tutorops.local,manager,Alex Operations,false,2026-02-01T09:02:00Z
