@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
-import { getDefaultLocationId, listLocations } from "@/lib/locations";
+import { getDefaultLocationId, listLocationsForManager } from "@/lib/locations";
 import type { OperatingHoursRow } from "@/lib/operating-hours";
 import { normalizeOperatingHours } from "@/lib/operating-hours";
 import {
@@ -32,6 +33,14 @@ export default async function ManagerSchedulePage({
 }: PageProps) {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const weekParam = Array.isArray(resolvedSearchParams?.week)
     ? resolvedSearchParams?.week[0]
@@ -44,7 +53,7 @@ export default async function ManagerSchedulePage({
   const weekStart = getWeekStart(anchorDate ?? new Date());
   const weekDates = getWeekDates(weekStart);
 
-  const locations = await listLocations(supabase);
+  const locations = await listLocationsForManager(supabase, user.id);
 
   let defaultLocationId: string | null = null;
   try {

@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { resolveRolePath, roleToPath } from "../../src/lib/roles";
 
 describe("roleToPath", () => {
+  it("maps admin to /admin", () => {
+    expect(roleToPath("admin")).toBe("/admin");
+  });
+
   it("maps customer to /customer", () => {
     expect(roleToPath("customer")).toBe("/customer");
   });
