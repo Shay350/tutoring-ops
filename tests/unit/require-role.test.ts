@@ -177,6 +177,18 @@ describe("requireRole", () => {
     await expectNoRedirect(requireRole("manager"));
   });
 
+  it("allows admin through admin guard", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-admin" },
+        profile: { role: "admin", pending: false },
+      })
+    );
+
+    const { requireRole } = await import("../../src/lib/auth");
+    await expectNoRedirect(requireRole("admin"));
+  });
+
   it("redirects to /login for unknown role on profile", async () => {
     setClient(
       buildSupabaseClient({
@@ -274,6 +286,18 @@ describe("requireNonCustomer", () => {
       buildSupabaseClient({
         user: { id: "user-1" },
         profile: { role: "manager", pending: false },
+      })
+    );
+
+    const { requireNonCustomer } = await import("../../src/lib/auth");
+    await expectNoRedirect(requireNonCustomer());
+  });
+
+  it("does not redirect for admins", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-admin" },
+        profile: { role: "admin", pending: false },
       })
     );
 
