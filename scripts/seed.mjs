@@ -415,6 +415,30 @@ async function ensureAuthUsers(supabase, profiles, defaultPassword) {
   console.log(`auth.users: ${created} created, ${updated} updated`);
 }
 
+function printLocalTestAccountHints(profiles, defaultPassword) {
+  const normalize = (value) => String(value ?? "").trim().toLowerCase();
+  const byRole = new Map(
+    profiles
+      .filter((profile) => profile?.role && profile?.email)
+      .map((profile) => [normalize(profile.role), String(profile.email).trim()])
+  );
+
+  const requiredRoles = ["admin", "manager", "customer", "tutor"];
+  const missing = requiredRoles.filter((role) => !byRole.get(role));
+
+  if (missing.length) {
+    throw new Error(
+      `profiles_seed.csv is missing required local test roles: ${missing.join(", ")}.`
+    );
+  }
+
+  console.log("Local test users (seeded):");
+  for (const role of requiredRoles) {
+    console.log(`- ${role}: ${byRole.get(role)}`);
+  }
+  console.log(`- password: ${defaultPassword}`);
+}
+
 async function main() {
   await loadEnv();
 
@@ -436,6 +460,7 @@ async function main() {
   });
 
   const profiles = await readSeedFile("profiles_seed.csv");
+  printLocalTestAccountHints(profiles, defaultPassword);
   await ensureAuthUsers(supabase, profiles, defaultPassword);
   await upsertRows(supabase, "profiles", profiles);
 
