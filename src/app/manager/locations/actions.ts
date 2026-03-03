@@ -26,17 +26,18 @@ export async function createLocation(
     return toActionError("Location name is required.");
   }
 
-  const { data: createdLocation, error: createError } = await context.supabase
+  const locationId = crypto.randomUUID();
+
+  const { error: createError } = await context.supabase
     .from("locations")
     .insert({
+      id: locationId,
       name,
       notes: notes || null,
       active,
-    })
-    .select("id")
-    .maybeSingle();
+    });
 
-  if (createError || !createdLocation) {
+  if (createError) {
     return toActionError("Unable to create location.");
   }
 
@@ -45,13 +46,13 @@ export async function createLocation(
     .upsert(
       {
         profile_id: context.user.id,
-        location_id: createdLocation.id,
+        location_id: locationId,
       },
       { onConflict: "profile_id,location_id" }
     );
 
   if (linkError) {
-    await context.supabase.from("locations").delete().eq("id", createdLocation.id);
+    await context.supabase.from("locations").delete().eq("id", locationId);
     return toActionError("Unable to assign manager access to new location.");
   }
 

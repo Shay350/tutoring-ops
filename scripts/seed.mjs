@@ -4,11 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_ROOT = process.cwd();
 const SEED_DIR = path.join(PROJECT_ROOT, "seed");
-const VS10_LOCATION_NAMES = ["Milton", "Mississauga", "Oakville"];
+const VS10_LOCATION_NAMES = ["Default", "Milton", "Mississauga", "Oakville"];
 const VS10_MANAGER_LOCATION_ASSIGNMENTS = {
-  "00000000-0000-0000-0000-000000000001": ["Milton"],
+  "00000000-0000-0000-0000-000000000001": ["Default", "Milton"],
   "00000000-0000-0000-0000-000000000006": ["Mississauga"],
   "00000000-0000-0000-0000-000000000007": [
+    "Default",
     "Milton",
     "Mississauga",
     "Oakville",
