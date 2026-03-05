@@ -22,6 +22,12 @@ test.describe("@smoke VS11 admin governance", () => {
 
     await page.goto(`${baseUrl}/admin/invites`);
     await expect(page.getByTestId("admin-invites-page")).toBeVisible();
+
+    const roleOptions = (await page.getByTestId("admin-invite-role").locator("option").allTextContents())
+      .map((value) => value.trim())
+      .filter(Boolean);
+    expect(roleOptions).toEqual(["admin", "manager", "tutor", "customer"]);
+
     await page.getByTestId("admin-invite-email").fill(`vs11-${Date.now()}@example.com`);
     await page.getByTestId("admin-invite-role").selectOption("tutor");
     await page.getByTestId("admin-invite-submit").click();
@@ -43,5 +49,12 @@ test.describe("@smoke VS11 admin governance", () => {
     await managerRoleForm.locator('input[name="confirm_role_change"]').check();
     await managerRoleForm.getByRole("button", { name: "Save role" }).click();
     await expect(managerRoleForm.locator('[data-testid^="admin-role-message-"]')).toContainText("Role");
+
+    const selfRow = page.locator('form[data-testid^="admin-access-row-"]:has-text("admin@tutorops.local")').first();
+    await expect(selfRow).toBeVisible();
+    await selfRow.locator('select[name="next_role"]').selectOption("manager");
+    await selfRow.locator('input[name="confirm_role_change"]').check();
+    await selfRow.getByRole("button", { name: "Save role" }).click();
+    await expect(selfRow.locator('[data-testid^="admin-role-message-"]')).toContainText("[SELF_DEMOTION_BLOCKED]");
   });
 });
