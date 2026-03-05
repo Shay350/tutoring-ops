@@ -63,6 +63,24 @@ test.describe("@smoke VS11 admin boundary coverage", () => {
     expect(cleaned).not.toContain("Oakville");
   });
 
+
+  test("manager governance pages enforce read-only/customer-only boundaries", async ({ page }) => {
+    await login(page, "manager");
+
+    await page.goto(`${baseUrl}/manager/invites`);
+    await expect(page.getByTestId("manager-invite-boundary")).toBeVisible();
+    const roleSelect = page.getByTestId("manager-invite-role");
+    await expect(roleSelect).toBeVisible();
+    await expect(roleSelect.locator("option")).toHaveCount(1);
+    await expect(roleSelect.locator("option")).toHaveText("customer");
+
+    await page.goto(`${baseUrl}/manager/locations`);
+    await expect(page.getByTestId("manager-locations-boundary")).toBeVisible();
+    await expect(page.getByTestId("locations-list")).toBeVisible();
+    await expect(page.getByTestId("location-create")).toHaveCount(0);
+    await expect(page.getByTestId("location-save")).toHaveCount(0);
+  });
+
   test("customer self-access remains unchanged", async ({ page }) => {
     await login(page, "customer");
 

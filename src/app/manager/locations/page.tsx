@@ -1,8 +1,6 @@
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-
-import { createLocation, updateLocation } from "./actions";
-import { CreateLocationForm, LocationRowForm } from "./location-forms";
 
 type LocationRow = {
   id: string;
@@ -26,16 +24,10 @@ export default async function ManagerLocationsPage() {
       <div>
         <p className="text-sm text-muted-foreground">Manager</p>
         <h1 className="text-2xl font-semibold text-slate-900">Locations</h1>
+        <p className="text-sm text-muted-foreground" data-testid="manager-locations-boundary">
+          Locations are read-only in manager mode. Create or edit locations in admin governance.
+        </p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create location</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CreateLocationForm action={createLocation} />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -59,15 +51,15 @@ export default async function ManagerLocationsPage() {
                   data-testid="location-row"
                   data-location-id={location.id}
                 >
-                  <LocationRowForm
-                    location={{
-                      id: location.id,
-                      name: location.name ?? "",
-                      notes: location.notes,
-                      active: location.active,
-                    }}
-                    action={updateLocation}
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-medium text-slate-900">{location.name ?? "Unnamed location"}</h3>
+                    <Badge variant={location.active ? "outline" : "secondary"}>
+                      {location.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {location.notes?.trim() ? location.notes : "No notes."}
+                  </p>
                 </div>
               ))}
             </div>
