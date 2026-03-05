@@ -24,7 +24,18 @@ type PageProps = {
   params: { studentId: string };
 };
 
-export default async function ManagerStudentDetail({ params }: PageProps) {
+type OperationalPageProps = PageProps & {
+  audienceLabel?: string;
+  basePath?: "/manager" | "/admin";
+  testId?: string;
+};
+
+export async function OperationalStudentDetailPage({
+  params,
+  audienceLabel = "Manager",
+  basePath = "/manager",
+  testId,
+}: OperationalPageProps) {
   const supabase = await createClient();
   const studentId = params.studentId;
   const isStudentUuid = isUuid(studentId);
@@ -61,16 +72,16 @@ export default async function ManagerStudentDetail({ params }: PageProps) {
     : { data: [] };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid={testId}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">Manager</p>
+          <p className="text-sm text-muted-foreground">{audienceLabel}</p>
           <h1 className="text-2xl font-semibold text-slate-900">
             Student details
           </h1>
         </div>
         <Link
-          href="/manager/students"
+          href={`${basePath}/students`}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           data-testid="manager-student-back"
         >
@@ -181,4 +192,9 @@ export default async function ManagerStudentDetail({ params }: PageProps) {
       </div>
     </div>
   );
+}
+
+
+export default async function ManagerStudentDetail(props: PageProps) {
+  return <OperationalStudentDetailPage {...props} />;
 }

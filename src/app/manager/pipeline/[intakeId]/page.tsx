@@ -58,6 +58,12 @@ import SlottingSuggestionsCard, {
 type PageProps = {
   params: { intakeId: string } | Promise<{ intakeId: string }>;
 };
+
+type OperationalPageProps = PageProps & {
+  audienceLabel?: string;
+  basePath?: "/manager" | "/admin";
+  testId?: string;
+};
 const MAX_STUDENTS_PER_TUTOR_PER_HOUR = 4;
 
 async function handleCompleteSession(formData: FormData) {
@@ -65,7 +71,12 @@ async function handleCompleteSession(formData: FormData) {
   await completeSession(initialActionState, formData);
 }
 
-export default async function IntakeDetailPage({ params }: PageProps) {
+export async function OperationalIntakeDetailPage({
+  params,
+  audienceLabel = "Manager",
+  basePath = "/manager",
+  testId,
+}: OperationalPageProps) {
   const resolvedParams = await Promise.resolve(params);
   const supabase = await createClient();
   const intakeId = resolvedParams.intakeId;
@@ -356,16 +367,16 @@ export default async function IntakeDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid={testId}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">Manager</p>
+          <p className="text-sm text-muted-foreground">{audienceLabel}</p>
           <h1 className="text-2xl font-semibold text-slate-900">
             Intake review
           </h1>
         </div>
         <Link
-          href="/manager/pipeline"
+          href={`${basePath}/pipeline`}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           Back to pipeline
@@ -450,7 +461,7 @@ export default async function IntakeDetailPage({ params }: PageProps) {
             </p>
           </div>
           <Link
-            href={`/manager/schedule${contextLocationId ? `?location=${contextLocationId}` : ""}`}
+            href={`${basePath}/schedule${contextLocationId ? `?location=${contextLocationId}` : ""}`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Open master schedule
@@ -641,4 +652,9 @@ export default async function IntakeDetailPage({ params }: PageProps) {
       ) : null}
     </div>
   );
+}
+
+
+export default async function IntakeDetailPage(props: PageProps) {
+  return <OperationalIntakeDetailPage {...props} />;
 }

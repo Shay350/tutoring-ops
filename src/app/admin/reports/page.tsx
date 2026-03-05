@@ -200,14 +200,14 @@ export async function OperationalReportsPage({ searchParams, audienceLabel = 'Ma
           <div className="flex flex-wrap gap-2">
             <a
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-              href={`/manager/reports/export/sessions?month=${monthRange.month}`}
+              href={`/admin/reports/export/sessions?month=${monthRange.month}`}
               data-testid="export-sessions"
             >
               Export sessions CSV
             </a>
             <a
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-              href={`/manager/reports/export/session-logs?month=${monthRange.month}`}
+              href={`/admin/reports/export/session-logs?month=${monthRange.month}`}
               data-testid="export-logs"
             >
               Export session logs CSV
@@ -298,6 +298,6 @@ export async function OperationalReportsPage({ searchParams, audienceLabel = 'Ma
 }
 
 
-export default async function ManagerReportsPage({ searchParams }: PageProps) {
-  return <OperationalReportsPage searchParams={searchParams} />;
+export default async function AdminReportsPage({ searchParams }: PageProps) {
+  return <OperationalReportsPage searchParams={searchParams} audienceLabel="Admin" basePath="/admin" testId="admin-reports-entry" />;
 }

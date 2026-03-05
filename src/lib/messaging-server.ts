@@ -73,7 +73,7 @@ export async function listThreadsForUser(
             .select("id, full_name")
             .in("id", studentIds)
         : Promise.resolve({ data: [] }),
-      role === "manager" && customerIds.length
+      (role === "manager" || role === "admin") && customerIds.length
         ? supabase
             .from("profiles")
             .select("id, full_name")

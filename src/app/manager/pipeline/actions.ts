@@ -110,7 +110,7 @@ export async function approveIntake(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -146,7 +146,9 @@ export async function approveIntake(
     const intakeLocationId = intakeResult.data.location_id
       ? String(intakeResult.data.location_id)
       : await getLocationIdForIntake(context.supabase, intakeId);
-    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -193,7 +195,9 @@ export async function approveIntake(
   }
 
   revalidatePath("/manager");
+  revalidatePath("/admin");
   revalidatePath("/manager/pipeline");
+  revalidatePath("/admin/pipeline");
   revalidatePath(`/manager/pipeline/${intakeId}`);
 
   try {
@@ -214,7 +218,7 @@ export async function assignTutor(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -229,7 +233,9 @@ export async function assignTutor(
 
   try {
     const studentLocationId = await getLocationIdForStudent(context.supabase, studentId);
-    await requireManagerLocationAccess(context.supabase, context.user.id, studentLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, studentLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -274,8 +280,11 @@ export async function assignTutor(
   }
 
   revalidatePath("/manager");
+  revalidatePath("/admin");
   revalidatePath("/manager/pipeline");
+  revalidatePath("/admin/pipeline");
   revalidatePath("/manager/schedule");
+  revalidatePath("/admin/schedule");
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
   }
@@ -287,7 +296,7 @@ export async function createSession(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -342,7 +351,9 @@ export async function createSession(
   let sessionLocationId: string;
   try {
     sessionLocationId = await getLocationIdForStudent(context.supabase, studentId);
-    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load student location."
@@ -558,12 +569,15 @@ export async function createSession(
   }
 
   revalidatePath("/manager");
+  revalidatePath("/admin");
   revalidatePath("/manager/pipeline");
+  revalidatePath("/admin/pipeline");
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
   }
   if (status === "completed") {
     revalidatePath("/manager/students");
+    revalidatePath("/admin/students");
     revalidatePath("/customer/membership");
     revalidatePath("/tutor/students");
   }
@@ -579,7 +593,7 @@ export async function completeSession(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -605,7 +619,9 @@ export async function completeSession(
     const sessionLocationId = session.location_id
       ? String(session.location_id)
       : await getLocationIdForStudent(context.supabase, session.student_id);
-    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -636,6 +652,7 @@ export async function completeSession(
       revalidatePath(`/manager/pipeline/${intakeId}`);
     }
     revalidatePath(`/manager/students/${sessionForBilling.student_id}`);
+    revalidatePath(`/admin/students/${sessionForBilling.student_id}`);
     revalidatePath("/tutor/students");
     return toActionSuccess("Session already billed.");
   }
@@ -651,11 +668,14 @@ export async function completeSession(
   }
 
   revalidatePath("/manager");
+  revalidatePath("/admin");
   revalidatePath("/manager/pipeline");
+  revalidatePath("/admin/pipeline");
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
   }
   revalidatePath(`/manager/students/${sessionForBilling.student_id}`);
+    revalidatePath(`/admin/students/${sessionForBilling.student_id}`);
   revalidatePath("/customer/membership");
   revalidatePath("/tutor/students");
 

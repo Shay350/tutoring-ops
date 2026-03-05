@@ -93,3 +93,29 @@ test.describe("@smoke VS11 admin boundary coverage", () => {
     await expect(page).toHaveURL(/\/customer$/);
   });
 });
+
+test("admin operational entrypoints are available org-wide", async ({ page }) => {
+  test.skip(!shouldRun, "Set E2E_RUN_VS11=1 to enable VS11 coverage.");
+  await login(page, "admin");
+
+  await page.goto(`${baseUrl}/admin/pipeline`);
+  await expect(page.getByTestId("admin-pipeline-entry")).toBeVisible();
+  await expect(page.getByTestId("intake-list")).toBeVisible();
+
+  await page.goto(`${baseUrl}/admin/schedule`);
+  await expect(page.getByTestId("admin-schedule-entry")).toBeVisible();
+  const locationFilter = page.getByTestId("schedule-location-select");
+  await expect(locationFilter).toBeVisible();
+  const options = (await locationFilter.locator("option").allTextContents()).map((v) => v.trim()).filter(Boolean);
+  expect(options).toContain("Milton");
+  expect(options).toContain("Mississauga");
+
+  await page.goto(`${baseUrl}/admin/students`);
+  await expect(page.getByTestId("admin-students-entry")).toBeVisible();
+
+  await page.goto(`${baseUrl}/admin/messages`);
+  await expect(page.getByTestId("admin-messages-entry")).toBeVisible();
+
+  await page.goto(`${baseUrl}/admin/reports`);
+  await expect(page.getByTestId("admin-reports-entry")).toBeVisible();
+});
