@@ -57,7 +57,7 @@ export async function generateSlottingSuggestionsForIntake(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -139,7 +139,9 @@ export async function generateSlottingSuggestionsForIntake(
     intakeLocationId = intake.location_id
       ? String(intake.location_id)
       : await getLocationIdForIntake(context.supabase, intakeId);
-    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load intake location."
@@ -238,6 +240,7 @@ export async function generateSlottingSuggestionsForIntake(
 
   if (candidates.length === 0) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
+    revalidatePath(`/admin/pipeline/${intakeId}`);
     return toActionSuccess("No suggestions available under current constraints.");
   }
 
@@ -262,6 +265,7 @@ export async function generateSlottingSuggestionsForIntake(
   }
 
   revalidatePath(`/manager/pipeline/${intakeId}`);
+    revalidatePath(`/admin/pipeline/${intakeId}`);
 
   return toActionSuccess(`Generated ${payload.length} slotting suggestions.`);
 }
@@ -270,7 +274,7 @@ export async function rejectSlottingSuggestion(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -298,7 +302,9 @@ export async function rejectSlottingSuggestion(
       context.supabase,
       suggestion.intake_id
     );
-    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -308,6 +314,7 @@ export async function rejectSlottingSuggestion(
   if (suggestion.status === "rejected") {
     if (intakeId) {
       revalidatePath(`/manager/pipeline/${intakeId}`);
+    revalidatePath(`/admin/pipeline/${intakeId}`);
     }
     return toActionSuccess("Suggestion already rejected.");
   }
@@ -380,6 +387,7 @@ export async function rejectSlottingSuggestion(
 
   if (intakeId) {
     revalidatePath(`/manager/pipeline/${intakeId}`);
+    revalidatePath(`/admin/pipeline/${intakeId}`);
   }
 
   return toActionSuccess("Suggestion rejected.");
@@ -389,7 +397,7 @@ export async function approveSlottingSuggestion(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -419,7 +427,9 @@ export async function approveSlottingSuggestion(
       context.supabase,
       suggestion.intake_id
     );
-    await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, intakeLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -725,7 +735,9 @@ export async function approveSlottingSuggestion(
   }
 
   revalidatePath(`/manager/pipeline/${resolvedIntakeId}`);
+  revalidatePath(`/admin/pipeline/${resolvedIntakeId}`);
   revalidatePath("/manager/schedule");
+  revalidatePath("/admin/schedule");
 
   return toActionSuccess("Suggestion approved and scheduled.");
 }

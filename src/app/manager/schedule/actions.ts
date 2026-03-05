@@ -35,7 +35,7 @@ export async function createRecurringSessions(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -139,7 +139,9 @@ export async function createRecurringSessions(
   let sessionLocationId: string;
   try {
     sessionLocationId = await getLocationIdForStudent(context.supabase, studentId);
-    await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    if (context.profile.role === "manager") {
+      await requireManagerLocationAccess(context.supabase, context.user.id, sessionLocationId);
+    }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to load student location."
@@ -242,7 +244,9 @@ export async function createRecurringSessions(
   }
 
   revalidatePath("/manager/schedule");
+  revalidatePath("/admin/schedule");
   revalidatePath("/manager");
+  revalidatePath("/admin");
 
   return toActionSuccess(`Created ${payload.length} sessions.`);
 }

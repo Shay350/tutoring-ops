@@ -34,7 +34,7 @@ export async function saveMembership(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -107,7 +107,9 @@ export async function saveMembership(
   }
 
   revalidatePath("/manager/students");
+  revalidatePath("/admin/students");
   revalidatePath(`/manager/students/${studentId}`);
+  revalidatePath(`/admin/students/${studentId}`);
   revalidatePath("/customer/membership");
   revalidatePath(`/customer/students/${studentId}`);
   revalidatePath("/tutor/students");
@@ -119,7 +121,7 @@ export async function adjustMembershipHours(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -186,8 +188,10 @@ export async function adjustMembershipHours(
   }
 
   revalidatePath("/manager/students");
+  revalidatePath("/admin/students");
   if (studentId) {
     revalidatePath(`/manager/students/${studentId}`);
+  revalidatePath(`/admin/students/${studentId}`);
     revalidatePath(`/customer/students/${studentId}`);
   }
   revalidatePath("/customer/membership");

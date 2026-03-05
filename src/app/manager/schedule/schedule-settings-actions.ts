@@ -23,7 +23,7 @@ export async function updateOperatingHours(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const context = await getActionContext("manager");
+  const context = await getActionContext({ anyOfRoles: ["manager", "admin"] });
   if ("error" in context) {
     return toActionError(context.error);
   }
@@ -41,7 +41,9 @@ export async function updateOperatingHours(
   }
 
   try {
+    if (context.profile.role === "manager") {
     await requireManagerLocationAccess(context.supabase, context.user.id, locationId);
+  }
   } catch (error) {
     return toActionError(
       error instanceof Error ? error.message : "Unable to validate location access."
@@ -102,5 +104,6 @@ export async function updateOperatingHours(
   }
 
   revalidatePath("/manager/schedule");
+  revalidatePath("/admin/schedule");
   return toActionSuccess("Operating hours saved.");
 }
