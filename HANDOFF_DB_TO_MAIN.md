@@ -170,3 +170,25 @@ Filled for PR1 (DB/RLS): locations + location-scoped RLS and backfill.
 - As manager with one location assignment, verify location-scoped reads/writes on `intakes`, `sessions`, `operating_hours`, and `slotting_suggestions`.
 - As tutor with one location assignment, verify reads are limited to assigned-location `students`/`assignments`/`sessions`.
 - As customer, verify visibility remains limited to own rows and own linked locations.
+
+============================================================
+
+# DB Handoff to Main — VS11.1 (QA/Seed Hardening)
+
+## Seed fixture updates
+- `seed/profiles_seed.csv`
+  - Added deterministic second active admin user:
+    - `admin2@tutorops.local` (`id=...0019`)
+  - Purpose: deterministic coverage for role-edit governance checks where at least one alternate admin exists.
+
+## Deterministic assumptions now guaranteed by seed
+- Active admins >= 2 (`admin@tutorops.local`, `admin2@tutorops.local`)
+- Stable actor identities used by VS11.1 e2e/unit matrix:
+  - admin: `admin@tutorops.local`
+  - manager: `manager@tutorops.local`
+  - tutor: `tutor1@tutorops.local`
+  - customer: `parent1@tutorops.local`
+
+## Notes for main
+- No schema/migration changes in PR6 scope.
+- This PR hardens deterministic QA/seed behavior only.

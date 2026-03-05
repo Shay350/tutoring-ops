@@ -3,15 +3,16 @@ import { expect, test, type Page } from "@playwright/test";
 const shouldRun = process.env.E2E_RUN_VS11 === "1";
 const baseUrl = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
-const seededEmailByRole: Record<"admin" | "manager" | "customer", string> = {
+const seededEmailByRole: Record<"admin" | "manager" | "customer" | "tutor", string> = {
   admin: "admin@tutorops.local",
   manager: "manager@tutorops.local",
   customer: "parent1@tutorops.local",
+  tutor: "tutor1@tutorops.local",
 };
 
 async function login(
   page: Page,
-  role: "admin" | "manager" | "customer"
+  role: "admin" | "manager" | "customer" | "tutor"
 ): Promise<void> {
   const email = process.env[`E2E_${role.toUpperCase()}_EMAIL`] ?? seededEmailByRole[role];
   const password = process.env[`E2E_${role.toUpperCase()}_PASSWORD`] ?? "Password123!";
@@ -61,8 +62,15 @@ test.describe("@smoke VS11 admin boundary coverage", () => {
     expect(cleaned).toContain("Milton");
     expect(cleaned).not.toContain("Mississauga");
     expect(cleaned).not.toContain("Oakville");
-  });
 
+    await page.goto(`${baseUrl}/manager/pipeline`);
+    await expect(page.getByTestId("manager-pipeline-entry")).toBeVisible();
+    await expect(page.getByTestId("intake-list")).toBeVisible();
+
+    await page.goto(`${baseUrl}/manager/students`);
+    await expect(page.getByTestId("manager-students-entry")).toBeVisible();
+    await expect(page.getByTestId("manager-student-list")).toBeVisible();
+  });
 
   test("manager governance pages enforce read-only/customer-only boundaries", async ({ page }) => {
     await login(page, "manager");
@@ -91,6 +99,17 @@ test.describe("@smoke VS11 admin boundary coverage", () => {
     await page.goto(`${baseUrl}/admin`);
     await page.waitForURL("**/customer");
     await expect(page).toHaveURL(/\/customer$/);
+  });
+
+  test("tutor self-access remains unchanged", async ({ page }) => {
+    await login(page, "tutor");
+
+    await page.goto(`${baseUrl}/tutor`);
+    await expect(page).toHaveURL(/\/tutor$/);
+
+    await page.goto(`${baseUrl}/admin`);
+    await page.waitForURL("**/tutor");
+    await expect(page).toHaveURL(/\/tutor$/);
   });
 });
 

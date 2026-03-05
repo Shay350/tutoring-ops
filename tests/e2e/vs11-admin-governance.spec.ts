@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const shouldRun = process.env.E2E_RUN_VS11 === "1";
 const baseUrl = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
-async function login(page: Page): Promise<void> {
+async function login(page: Page): Promise<string> {
   const email = process.env.E2E_ADMIN_EMAIL ?? "admin@tutorops.local";
   const password = process.env.E2E_ADMIN_PASSWORD ?? "Password123!";
 
@@ -12,16 +12,24 @@ async function login(page: Page): Promise<void> {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForLoadState("networkidle");
+
+  return email;
 }
 
 test.describe("@smoke VS11 admin governance", () => {
   test.skip(!shouldRun, "Set E2E_RUN_VS11=1 to enable VS11 governance coverage.");
 
   test("admin can use governance routes and receives safeguard feedback", async ({ page }) => {
-    await login(page);
+    const activeAdminEmail = await login(page);
 
     await page.goto(`${baseUrl}/admin/invites`);
     await expect(page.getByTestId("admin-invites-page")).toBeVisible();
+
+    const roleOptions = (await page.getByTestId("admin-invite-role").locator("option").allTextContents())
+      .map((value) => value.trim())
+      .filter(Boolean);
+    expect(roleOptions).toEqual(["admin", "manager", "tutor", "customer"]);
+
     await page.getByTestId("admin-invite-email").fill(`vs11-${Date.now()}@example.com`);
     await page.getByTestId("admin-invite-role").selectOption("tutor");
     await page.getByTestId("admin-invite-submit").click();
@@ -43,5 +51,12 @@ test.describe("@smoke VS11 admin governance", () => {
     await managerRoleForm.locator('input[name="confirm_role_change"]').check();
     await managerRoleForm.getByRole("button", { name: "Save role" }).click();
     await expect(managerRoleForm.locator('[data-testid^="admin-role-message-"]')).toContainText("Role");
+
+    const selfRow = page.locator(`form[data-testid^="admin-access-row-"]:has-text("${activeAdminEmail}")`).first();
+    await expect(selfRow).toBeVisible();
+    await selfRow.locator('select[name="next_role"]').selectOption("manager");
+    await selfRow.locator('input[name="confirm_role_change"]').check();
+    await selfRow.getByRole("button", { name: "Save role" }).click();
+    await expect(selfRow.locator('[data-testid^="admin-role-message-"]')).toContainText("[SELF_DEMOTION_BLOCKED]");
   });
 });
