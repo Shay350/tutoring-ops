@@ -1,5 +1,3 @@
-import { revalidatePath } from "next/cache";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,33 +13,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 
-const inviteRoles = ["manager", "tutor", "customer"] as const;
-
-async function createInvite(formData: FormData) {
-  "use server";
-
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const role = String(formData.get("role") ?? "");
-
-  if (!email || !inviteRoles.includes(role as (typeof inviteRoles)[number])) {
-    return;
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  await supabase.from("invites").insert({
-    email,
-    role,
-    created_by: user?.id ?? null,
-  });
-
-  revalidatePath("/manager/invites");
-}
+import { createManagerInvite, MANAGER_INVITE_ROLE } from "./actions";
 
 function formatTimestamp(value: string | null) {
   if (!value) {
@@ -63,8 +35,8 @@ export default async function InvitesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-sky-900">Invites</h1>
-        <p className="text-sm text-muted-foreground">
-          Create role-specific invites. Unused invites are required for access.
+        <p className="text-sm text-muted-foreground" data-testid="manager-invite-boundary">
+          Managers can only create customer invites. Manager and tutor invites are restricted to admin governance.
         </p>
       </div>
 
@@ -73,14 +45,14 @@ export default async function InvitesPage() {
           <CardTitle>Create invite</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createInvite} className="grid gap-4 md:grid-cols-3">
+          <form action={createManagerInvite} className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="student@tutorops.com"
+                placeholder="parent@tutorops.com"
                 required
               />
             </div>
@@ -90,13 +62,10 @@ export default async function InvitesPage() {
                 id="role"
                 name="role"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                defaultValue="customer"
+                defaultValue={MANAGER_INVITE_ROLE}
+                data-testid="manager-invite-role"
               >
-                {inviteRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
+                <option value={MANAGER_INVITE_ROLE}>{MANAGER_INVITE_ROLE}</option>
               </select>
             </div>
             <div className="flex items-end">
