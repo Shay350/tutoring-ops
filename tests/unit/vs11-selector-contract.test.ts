@@ -24,6 +24,7 @@ describe("VS11 selector contract", () => {
     const managerLocations = readSource("src/app/manager/locations/page.tsx");
     const adminSchedule = readSource("src/app/admin/schedule/page.tsx");
     const adminStudents = readSource("src/app/admin/students/page.tsx");
+    const operationalStudents = readSource("src/app/manager/students/page.tsx");
 
     expect(managerInvites).toContain('data-testid="manager-invite-boundary"');
     expect(managerInvites).toContain('data-testid="manager-invite-role"');
@@ -31,5 +32,6 @@ describe("VS11 selector contract", () => {
     expect(managerLocations).toContain('data-testid="locations-list"');
     expect(adminSchedule).toContain('data-testid="admin-schedule-entry"');
     expect(adminStudents).toContain('testId="admin-students-entry"');
+    expect(operationalStudents).toContain("data-testid={testId}");
   });
 });
