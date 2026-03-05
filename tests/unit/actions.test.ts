@@ -113,6 +113,20 @@ describe("getActionContext", () => {
     expect(result).toEqual({ error: "You do not have access to perform this action." });
   });
 
+  it("returns access error when anyOfRoles is an empty list", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "manager", pending: false, full_name: "M User" },
+      })
+    );
+
+    const { getActionContext } = await import("../../src/lib/actions");
+    const result = await getActionContext({ anyOfRoles: [] });
+
+    expect(result).toEqual({ error: "You do not have access to perform this action." });
+  });
+
   it("enforces both requiredRole and anyOfRoles when both are provided", async () => {
     setClient(
       buildSupabaseClient({

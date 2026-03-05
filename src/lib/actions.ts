@@ -72,7 +72,7 @@ export async function getActionContext(
     return { error: "You do not have access to perform this action." };
   }
 
-  if (anyOfRoles && anyOfRoles.length > 0 && !anyOfRoles.includes(profile.role as Role)) {
+  if (anyOfRoles && !anyOfRoles.includes(profile.role as Role)) {
     return { error: "You do not have access to perform this action." };
   }
 
