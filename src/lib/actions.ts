@@ -13,9 +13,37 @@ type ActionContext = {
 
 type ActionContextError = { error: string };
 
+/**
+ * Contract surface (VS11.1): role authorization options for server actions.
+ *
+ * - `requiredRole`: exact role match.
+ * - `anyOfRoles`: any role from this set.
+ * - When both are provided, both checks must pass.
+ */
+type ActionContextRoleOptions = {
+  requiredRole?: Role;
+  anyOfRoles?: Role[];
+};
+
+function resolveRoleOptions(
+  optionsOrRequiredRole?: Role | ActionContextRoleOptions
+): ActionContextRoleOptions {
+  if (!optionsOrRequiredRole) {
+    return {};
+  }
+
+  if (typeof optionsOrRequiredRole === "string") {
+    return { requiredRole: optionsOrRequiredRole };
+  }
+
+  return optionsOrRequiredRole;
+}
+
 export async function getActionContext(
-  requiredRole?: Role
+  optionsOrRequiredRole?: Role | ActionContextRoleOptions
 ): Promise<ActionContext | ActionContextError> {
+  const { requiredRole, anyOfRoles } = resolveRoleOptions(optionsOrRequiredRole);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,6 +69,10 @@ export async function getActionContext(
   }
 
   if (requiredRole && profile.role !== requiredRole) {
+    return { error: "You do not have access to perform this action." };
+  }
+
+  if (anyOfRoles && anyOfRoles.length > 0 && !anyOfRoles.includes(profile.role as Role)) {
     return { error: "You do not have access to perform this action." };
   }
 

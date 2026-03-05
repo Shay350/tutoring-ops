@@ -305,3 +305,45 @@ describe("requireNonCustomer", () => {
     await expectNoRedirect(requireNonCustomer());
   });
 });
+
+describe("requireAnyRole", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not redirect when current role is included in the allowed set", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "manager", pending: false },
+      })
+    );
+
+    const { requireAnyRole } = await import("../../src/lib/auth");
+    await expectNoRedirect(requireAnyRole(["manager", "admin"]));
+  });
+
+  it("redirects to role home when current role is not in the allowed set", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "customer", pending: false },
+      })
+    );
+
+    const { requireAnyRole } = await import("../../src/lib/auth");
+    await expectRedirect(requireAnyRole(["manager", "admin"]), "/customer");
+  });
+
+  it("redirects unknown roles to /login", async () => {
+    setClient(
+      buildSupabaseClient({
+        user: { id: "user-1" },
+        profile: { role: "unknown", pending: false },
+      })
+    );
+
+    const { requireAnyRole } = await import("../../src/lib/auth");
+    await expectRedirect(requireAnyRole(["manager", "admin"]), "/login");
+  });
+});
