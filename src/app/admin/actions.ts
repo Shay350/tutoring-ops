@@ -131,10 +131,11 @@ export async function updateProfileRole(
     return fail(safeguard.code, safeguard.message);
   }
 
-  const { error: updateError } = await context.supabase
-    .from("profiles")
-    .update({ role: nextRole })
-    .eq("id", targetId);
+  const { error: updateError } = await context.supabase.rpc("admin_change_user_role", {
+    p_profile_id: targetId,
+    p_new_role: nextRole,
+    p_reason: null,
+  });
 
   if (updateError) {
     return fail("DB_ERROR", "Unable to update role.");
