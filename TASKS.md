@@ -332,7 +332,7 @@ GOAL:
 Introduce a first-class Admin role (separate from Manager) with org-wide administration,
 while keeping manager/tutor/customer operations and location-aware controls intact.
 
-STATUS: IN PROGRESS (2026-02-25)
+STATUS: COMPLETE (2026-03-01)
 
 ---
 
