@@ -30,7 +30,23 @@ async function fetchProfile(
   return data ?? null;
 }
 
+/**
+ * Enforces an exact role requirement for server-rendered routes/layouts.
+ * Redirect behavior is preserved for backward compatibility.
+ */
 export async function requireRole(requiredRole: Role): Promise<void> {
+  return requireAnyRole([requiredRole]);
+}
+
+/**
+ * Contract surface (VS11.1): role-set route guard.
+ *
+ * - Signature: `requireAnyRole(roles: Role[]): Promise<void>`
+ * - Redirects to `/login` when unauthenticated or profile is missing.
+ * - Redirects to `/no-access` when profile is pending/blocked.
+ * - Redirects to role home when authenticated but not in `roles`.
+ */
+export async function requireAnyRole(roles: Role[]): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -53,7 +69,7 @@ export async function requireRole(requiredRole: Role): Promise<void> {
 
   const role = typeof profile.role === "string" ? profile.role : null;
 
-  if (role !== requiredRole) {
+  if (!role || !roles.includes(role as Role)) {
     redirect(resolveRolePath(role ?? undefined));
   }
 }
