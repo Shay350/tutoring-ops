@@ -22,7 +22,18 @@ type PageProps = {
   searchParams?: SearchParams | Promise<SearchParams>;
 };
 
-export default async function ManagerPipelinePage({ searchParams }: PageProps) {
+type PipelineViewProps = PageProps & {
+  audienceLabel: string;
+  basePath: string;
+  testId?: string;
+};
+
+export async function OperationalPipelinePage({
+  searchParams,
+  audienceLabel,
+  basePath,
+  testId,
+}: PipelineViewProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const supabase = await createClient();
   const searchQuery = String(resolvedSearchParams?.q ?? "").trim();
@@ -66,9 +77,9 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
     [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid={testId}>
       <div>
-        <p className="text-sm text-muted-foreground">Manager</p>
+        <p className="text-sm text-muted-foreground">{audienceLabel}</p>
         <h1 className="text-2xl font-semibold text-slate-900">Intake pipeline</h1>
       </div>
 
@@ -109,34 +120,28 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
                       : intake.id;
 
                   return (
-                  <TableRow key={intake.id} data-testid="intake-row">
-                    <TableCell className="font-medium">
-                      {intake.student_name}
-                    </TableCell>
-                    <TableCell>{intake.student_grade ?? "—"}</TableCell>
-                    <TableCell>
-                      {Array.isArray(intake.subjects)
-                        ? intake.subjects.join(", ")
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">
-                        {intake.status ?? "submitted"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDateTime(intake.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/manager/pipeline/${intakeCode}`}
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" })
-                        )}
-                        data-testid={`pipeline-review-${intake.id}`}
-                      >
-                        Review
-                      </Link>
-                    </TableCell>
-                  </TableRow>
+                    <TableRow key={intake.id} data-testid="intake-row">
+                      <TableCell className="font-medium">{intake.student_name}</TableCell>
+                      <TableCell>{intake.student_grade ?? "—"}</TableCell>
+                      <TableCell>
+                        {Array.isArray(intake.subjects) ? intake.subjects.join(", ") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {intake.status ?? "submitted"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDateTime(intake.created_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`${basePath}/pipeline/${intakeCode}`}
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                          data-testid={`pipeline-review-${intake.id}`}
+                        >
+                          Review
+                        </Link>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               ) : (
@@ -151,5 +156,15 @@ export default async function ManagerPipelinePage({ searchParams }: PageProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default async function ManagerPipelinePage({ searchParams }: PageProps) {
+  return (
+    <OperationalPipelinePage
+      searchParams={searchParams}
+      audienceLabel="Manager"
+      basePath="/manager"
+    />
   );
 }

@@ -2,10 +2,12 @@ import AppShell, { type NavItem } from "@/components/app-shell";
 import { requireRole } from "@/lib/auth";
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/admin", testId: "admin-nav-dashboard" },
-  { label: "Invites", href: "/admin/invites", testId: "admin-nav-invites" },
-  { label: "Locations", href: "/admin/locations", testId: "admin-nav-locations" },
-  { label: "Access", href: "/admin/access", testId: "admin-nav-access" },
+  { label: "Dashboard", href: "/admin" },
+  { label: "Pipeline", href: "/admin/pipeline" },
+  { label: "Master Schedule", href: "/admin/schedule" },
+  { label: "Students", href: "/admin/students" },
+  { label: "Messages", href: "/admin/messages" },
+  { label: "Reports", href: "/admin/reports" },
 ];
 
 export default async function AdminLayout({

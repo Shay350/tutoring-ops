@@ -10,7 +10,7 @@ import {
 import type { ActionState } from "@/lib/action-state";
 import { markThreadRead, sendMessage } from "@/lib/messaging-server";
 
-const allowedRoles = new Set(["customer", "manager"]);
+const allowedRoles = new Set(["customer", "manager", "admin"]);
 
 export async function sendMessageAction(
   _prevState: ActionState,
@@ -49,6 +49,7 @@ export async function sendMessageAction(
 
   revalidatePath("/customer/messages");
   revalidatePath("/manager/messages");
+  revalidatePath("/admin/messages");
 
   return toActionSuccess("Message sent.");
 }
@@ -84,6 +85,7 @@ export async function markThreadReadAction(
 
   revalidatePath("/customer/messages");
   revalidatePath("/manager/messages");
+  revalidatePath("/admin/messages");
 
   return toActionSuccess("Thread marked as read.");
 }
